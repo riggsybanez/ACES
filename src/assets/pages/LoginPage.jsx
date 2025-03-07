@@ -7,24 +7,34 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const evaluatorCredentials = {
+    username: 'evaluator',
+    password: 'evaluator123',
+  };
+
   const adminCredentials = {
     username: 'admin',
     password: 'admin123',
+
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
+
+    // Check if the credentials match either admin or evaluator
     if (username === adminCredentials.username && password === adminCredentials.password) {
-      navigate('/admin-dashboard');
+      navigate("/admin-dashboard");
+    } else if (username === evaluatorCredentials.username && password === evaluatorCredentials.password) {
+      navigate("/evaluator-dashboard");
     } else {
-      setError('Invalid credentials. Please try again.');
+      setError("Invalid credentials. Please try again.");
     }
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
-        <h2 className="login-title">Admin Login</h2>
+        <h2 className="login-title">User Login</h2>
         {error && <p className="error-message">{error}</p>}
         <form onSubmit={handleLogin}>
           <input

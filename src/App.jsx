@@ -1,21 +1,23 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import HomePage from './assets/pages/HomePage';
+import StartingPage from './assets/pages/StartingPage';
 import LoginPage from './assets/pages/LoginPage'; 
-import EvaluateTab from './assets/pages/EvaluationTab';
+import EvaluateTab from './assets/pages/CourseEvaluationTab';
 import AdminDashboard from './assets/pages/AdminDashboard';
-import AccountManagementTab from './assets/pages/AccountManagementTab';
-import CreateAdminAccountTab from './assets/pages/CreateAdminAccountTab';
+import EvaluatorDashboard from './assets/pages/EvaluatorDashboard';
+import EvaluationHistory from './assets/pages/EvaluationHistory';
+
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<StartingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/evaluator-dashboard" element={<EvaluatorDashboard />} />
+      <Route path="/history" element={<EvaluationHistory />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
-      <Route path="/evaluation" element={<EvaluateTab />} />
-      <Route path="/account-management" element={<AccountManagementTab />} />
-      <Route path="/create-admin-account" element={<CreateAdminAccountTab />} />
+      <Route path="/course-evaluation" element={<EvaluateTab />} />
+      
     </Routes>
   );
 }

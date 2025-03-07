@@ -10,12 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@chakra-ui/react": "^3.9.0",
     "firebase": "^11.3.1",
+    "lucide-react": "^0.477.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.5"
+    "react-router-dom": "^7.3.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.9",
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-react": "^7.26.3",
     "@eslint/js": "^9.19.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
@@ -28,6 +33,6 @@
     "globals": "^15.14.0",
     "postcss": "^8.5.2",
     "tailwindcss": "^4.0.6",
-    "vite": "^0.10.3"
+    "vite": "^6.2.0"
   }
 }
