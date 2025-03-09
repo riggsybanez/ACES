@@ -23,7 +23,7 @@ const AdminDashboard = () => {
     try {
       const docRef = await addDoc(collection(db, 'Evaluator'), {
         Name: name,             
-        ID: parseInt(id, 12),   
+        ID: parseInt(id, 10),   
         Password: password      
       });
   
@@ -217,7 +217,7 @@ svg {
       {/* Main Content */}
       <div className="content">
         <div className="container">
-          <h2 className="title">Admin Account Creation</h2>
+          <h2 className="title">Evaluator Account Creation</h2>
           {message.content && (
             <div className={`alert ${message.type === "error" ? "error" : "success"}`}>
               {message.content}
@@ -225,7 +225,7 @@ svg {
           )}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="name">Name of New Admin</label>
+              <label htmlFor="name">Name of New Evaluator</label>
               <input
                 type="text"
                 id="name"

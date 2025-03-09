@@ -10,33 +10,40 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const evaluatorCredentials = {
-    username: 'evaluator',
-    password: 'evaluator123',
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
-  
+
     try {
-      // Access the specific Admin document
       const adminDocRef = doc(db, 'Admin', 'Admin');
       const adminDocSnap = await getDoc(adminDocRef);
-  
+
       if (adminDocSnap.exists()) {
         const adminData = adminDocSnap.data();
         
-        // Check if the password matches
-        if (adminData.Password === password) {
+        if (adminData.Password === password && adminData.ID === parseInt(username)) {
           navigate('/admin-dashboard');
-        } else {
-          setError('Invalid password. Please try again.');
+          return;
         }
-      } else {
-        setError('Admin not found.');
       }
+
+      const evaluatorQuery = query(
+        collection(db, 'Evaluator'),
+        where('ID', '==', parseInt(username))
+      );
+      const evaluatorSnapshot = await getDocs(evaluatorQuery);
+
+      if (!evaluatorSnapshot.empty) {
+        const evaluatorData = evaluatorSnapshot.docs[0].data();
+
+        if (evaluatorData.Password === password) {
+          navigate('/evaluator-dashboard');
+          return;
+        }
+      }
+
+      setError('Invalid credentials. Please try again.');
     } catch (err) {
-      console.error('Error fetching admin:', err);
+      console.error('Error fetching credentials:', err);
       setError('An error occurred. Please try again.');
     }
   };
@@ -50,7 +57,7 @@ const LoginPage = () => {
         <form onSubmit={handleLogin}>
           <input
             type="text"
-            placeholder="Username"
+            placeholder="ID"
             className="input-field"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
