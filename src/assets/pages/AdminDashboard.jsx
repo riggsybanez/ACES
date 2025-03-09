@@ -193,7 +193,7 @@ svg {
           <p>Course Evaluator</p>
         </div>
         <div onClick={() => navigate('/admin-dashboard')} className="sidebar-item">🏠 Home</div>
-        <div onClick={() => navigate('/course-evaluation')} className="sidebar-item">📅 Course Evaluation</div>
+        <div onClick={() => navigate('')} className="sidebar-item">📅 ???</div>
         <div onClick={() => navigate('/reports')} className="sidebar-item">📄 Accounts List</div>
 
         
