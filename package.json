@@ -15,7 +15,12 @@
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+<<<<<<< HEAD
     "react-router-dom": "^7.3.0"
+=======
+    "react-router-dom": "^7.1.5",
+    "tesseract.js": "^6.0.0"
+>>>>>>> 95494c2cdc98e9c5f6f83e5873bdd9fbe1843f8d
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
