@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../../firebase/authService'; // Import Firestore
+import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
+
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -12,24 +15,32 @@ const LoginPage = () => {
     password: 'evaluator123',
   };
 
-  const adminCredentials = {
-    username: 'admin',
-    password: 'admin123',
-
-  };
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-
-    // Check if the credentials match either admin or evaluator
-    if (username === adminCredentials.username && password === adminCredentials.password) {
-      navigate("/admin-dashboard");
-    } else if (username === evaluatorCredentials.username && password === evaluatorCredentials.password) {
-      navigate("/evaluator-dashboard");
-    } else {
-      setError("Invalid credentials. Please try again.");
+  
+    try {
+      // Access the specific Admin document
+      const adminDocRef = doc(db, 'Admin', 'Admin');
+      const adminDocSnap = await getDoc(adminDocRef);
+  
+      if (adminDocSnap.exists()) {
+        const adminData = adminDocSnap.data();
+        
+        // Check if the password matches
+        if (adminData.Password === password) {
+          navigate('/admin-dashboard');
+        } else {
+          setError('Invalid password. Please try again.');
+        }
+      } else {
+        setError('Admin not found.');
+      }
+    } catch (err) {
+      console.error('Error fetching admin:', err);
+      setError('An error occurred. Please try again.');
     }
   };
+
 
   return (
     <div className="login-container">

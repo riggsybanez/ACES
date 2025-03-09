@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { db } from '../../firebase/authService'; // Import Firestore
+import { collection, getDocs, query, where, getDoc, doc, addDoc } from 'firebase/firestore';
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -10,20 +12,32 @@ const AdminDashboard = () => {
   const [message, setMessage] = useState({ type: "", content: "" });
   const navigate = useNavigate(); // Initialize useNavigate
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+  
     if (password !== confirmPassword) {
       setMessage({ type: "error", content: "Passwords do not match" });
       return;
     }
-    // Here you would typically make an API call to create the account
-    console.log("Admin account created", { name, id, password });
-    setMessage({ type: "success", content: "Admin account created successfully" });
-    // Reset form
-    setName("");
-    setId("");
-    setPassword("");
-    setConfirmPassword("");
+  
+    try {
+      const docRef = await addDoc(collection(db, 'Evaluator'), {
+        Name: name,             
+        ID: parseInt(id, 12),   
+        Password: password      
+      });
+  
+      console.log("Evaluator account created with ID:", docRef.id);
+      setMessage({ type: "success", content: "Evaluator account created successfully" });
+  
+      setName("");
+      setId("");
+      setPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error("Error adding document:", error);
+      setMessage({ type: "error", content: "An error occurred. Please try again." });
+    }
   };
 
   return (
