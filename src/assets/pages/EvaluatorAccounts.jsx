@@ -1,17 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { db } from '../../firebase/authService'; // Import Firestore
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 const EvaluatorAccounts = () => {
   const navigate = useNavigate();
-  const [accounts, setAccounts] = useState([
-    { id: 1, name: "John Doe", email: "john@example.com", password: "1234", active: true },
-    { id: 2, name: "Jane Smith", email: "jane@example.com", password: "5678", active: false },
-  ]);
+  const [accounts, setAccounts] = useState([]);
   const [sortOrder, setSortOrder] = useState("asc");
 
-  const toggleStatus = (id) => {
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      const querySnapshot = await getDocs(collection(db, "Evaluator"));
+      const accountsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAccounts(accountsList);
+    };
+    fetchAccounts();
+  }, []);
+
+  const toggleStatus = async (id) => {
+    const account = accounts.find(account => account.id === id);
+    const accountRef = doc(db, "Evaluator", id);
+    await updateDoc(accountRef, { Active: !account.Active });
     setAccounts(accounts.map(account => 
-      account.id === id ? { ...account, active: !account.active } : account
+      account.id === id ? { ...account, Active: !account.Active } : account
     ));
   };
 
@@ -74,7 +85,7 @@ const EvaluatorAccounts = () => {
 
       {/* Main Content */}
       <div style={{ flex: 1, padding: "20px" }}>
-        <h2>Admin Accounts</h2>
+        <h2>Evaluator Accounts</h2>
         <button 
           onClick={sortAccounts} 
           style={{ padding: "5px 10px", marginBottom: "10px", cursor: "pointer" }}
@@ -89,18 +100,18 @@ const EvaluatorAccounts = () => {
             <thead>
               <tr>
                 <th style={tableHeaderStyle}>Name</th>
-                <th style={tableHeaderStyle}>Email</th>
+                <th style={tableHeaderStyle}>ID</th>
                 <th style={tableHeaderStyle}>Password</th>
                 <th style={tableHeaderStyle}>Status</th>
                 <th style={tableHeaderStyle}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.filter(account => account.active).map(account => (
+              {accounts.filter(account => account.Active).map(account => (
                 <tr key={account.id}>
-                  <td style={tableCellStyle}>{account.name}</td>
-                  <td style={tableCellStyle}>{account.email}</td>
-                  <td style={tableCellStyle}>{account.password}</td>
+                  <td style={tableCellStyle}>{account.Name}</td>
+                  <td style={tableCellStyle}>{account.ID}</td>
+                  <td style={tableCellStyle}>{account.Password}</td>
                   <td style={{ ...tableCellStyle, color: "green" }}>Active</td>
                   <td style={tableCellStyle}>
                     <button onClick={() => toggleStatus(account.id)}>Set Inactive</button>
@@ -118,18 +129,18 @@ const EvaluatorAccounts = () => {
             <thead>
               <tr>
                 <th style={tableHeaderStyle}>Name</th>
-                <th style={tableHeaderStyle}>Email</th>
+                <th style={tableHeaderStyle}>ID</th>
                 <th style={tableHeaderStyle}>Password</th>
                 <th style={tableHeaderStyle}>Status</th>
                 <th style={tableHeaderStyle}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.filter(account => !account.active).map(account => (
+              {accounts.filter(account => !account.Active).map(account => (
                 <tr key={account.id}>
-                  <td style={tableCellStyle}>{account.name}</td>
-                  <td style={tableCellStyle}>{account.email}</td>
-                  <td style={tableCellStyle}>{account.password}</td>
+                  <td style={tableCellStyle}>{account.Name}</td>
+                  <td style={tableCellStyle}>{account.ID}</td>
+                  <td style={tableCellStyle}>{account.Password}</td>
                   <td style={{ ...tableCellStyle, color: "red" }}>Inactive</td>
                   <td style={tableCellStyle}>
                     <button onClick={() => toggleStatus(account.id)}>Set Active</button>

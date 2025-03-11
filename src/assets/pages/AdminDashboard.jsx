@@ -24,7 +24,8 @@ const AdminDashboard = () => {
       const docRef = await addDoc(collection(db, 'Evaluator'), {
         Name: name,             
         ID: parseInt(id, 10),   
-        Password: password      
+        Password: password,
+        Active: false   
       });
   
       console.log("Evaluator account created with ID:", docRef.id);
