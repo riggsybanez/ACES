@@ -36,8 +36,14 @@ const LoginPage = () => {
         const evaluatorData = evaluatorSnapshot.docs[0].data();
 
         if (evaluatorData.Password === password) {
-          navigate('/evaluator-dashboard');
+          if (evaluatorData.Active === true) {
+            navigate('/evaluator-dashboard');
+            return;
+        }
+        else {
+          setError('Account is inactive. Please contact the admin.');
           return;
+        }
         }
       }
 
