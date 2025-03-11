@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { db } from '../../firebase/authService'; // Import Firestore
-import { collection, getDocs, query, where, getDoc, doc, addDoc } from 'firebase/firestore';
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -12,32 +10,20 @@ const AdminDashboard = () => {
   const [message, setMessage] = useState({ type: "", content: "" });
   const navigate = useNavigate(); // Initialize useNavigate
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-  
     if (password !== confirmPassword) {
       setMessage({ type: "error", content: "Passwords do not match" });
       return;
     }
-  
-    try {
-      const docRef = await addDoc(collection(db, 'Evaluator'), {
-        Name: name,             
-        ID: parseInt(id, 10),   
-        Password: password      
-      });
-  
-      console.log("Evaluator account created with ID:", docRef.id);
-      setMessage({ type: "success", content: "Evaluator account created successfully" });
-  
-      setName("");
-      setId("");
-      setPassword("");
-      setConfirmPassword("");
-    } catch (error) {
-      console.error("Error adding document:", error);
-      setMessage({ type: "error", content: "An error occurred. Please try again." });
-    }
+    // Here you would typically make an API call to create the account
+    console.log("Admin account created", { name, id, password });
+    setMessage({ type: "success", content: "Admin account created successfully" });
+    // Reset form
+    setName("");
+    setId("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -204,7 +190,7 @@ svg {
       <div className="sidebar">
         <div className="sidebar-header">
           <h1>JOHN SMITH</h1>
-          <p>Course Evaluator</p>
+          <p>Administrative Assistant</p>
         </div>
         <div onClick={() => navigate('/admin-dashboard')} className="sidebar-item">🏠 Home</div>
         <div onClick={() => navigate('')} className="sidebar-item">📅 ???</div>
@@ -217,7 +203,7 @@ svg {
       {/* Main Content */}
       <div className="content">
         <div className="container">
-          <h2 className="title">Evaluator Account Creation</h2>
+          <h2 className="title">Admin Account Creation</h2>
           {message.content && (
             <div className={`alert ${message.type === "error" ? "error" : "success"}`}>
               {message.content}
@@ -225,7 +211,7 @@ svg {
           )}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="name">Name of New Evaluator</label>
+              <label htmlFor="name">Name of New Admin</label>
               <input
                 type="text"
                 id="name"
