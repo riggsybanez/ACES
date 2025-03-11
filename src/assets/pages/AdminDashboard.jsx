@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { db } from '../../firebase/authService'; // Import Firestore
+import { collection, addDoc } from 'firebase/firestore';
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -10,26 +12,35 @@ const AdminDashboard = () => {
   const [notification, setNotification] = useState(null);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+  
     if (password !== confirmPassword) {
       setNotification({ type: "error", content: "Passwords do not match" });
       return;
     }
-
-    console.log("Admin account created", { name, id, password });
-
-    // Show success notification
-    setNotification({ type: "success", content: "Admin account created successfully" });
-
-    // Reset form
-    setName("");
-    setId("");
-    setPassword("");
-    setConfirmPassword("");
-
-    // Auto-hide notification after 5 seconds
-    setTimeout(() => setNotification(null), 5000);
+  
+    try {
+      const docRef = await addDoc(collection(db, 'Evaluator'), {
+        Name: name,             
+        ID: parseInt(id, 10),   
+        Password: password      
+      });
+  
+      console.log("Evaluator account created with ID:", docRef.id);
+      setNotification({ type: "success", content: "Evaluator account created successfully" });
+  
+      setName("");
+      setId("");
+      setPassword("");
+      setConfirmPassword("");
+  
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+    } catch (error) {
+      console.error("Error adding document:", error);
+      setNotification({ type: "error", content: "An error occurred. Please try again." });
+    }
   };
 
   return (
@@ -123,6 +134,16 @@ const AdminDashboard = () => {
           box-sizing: border-box;
           font-size: 1rem;
         }
+        .password-toggle {
+          position: relative;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: pointer;
+        }
+        .password-toggle svg {
+          width: 20px;
+          height: 20px;
+        }
         .notification {
           position: fixed;
           bottom: 20px;
@@ -185,7 +206,7 @@ const AdminDashboard = () => {
                 onChange={(e) => setId(e.target.value)}
               />
             </div>
-            <div className="form-group">
+            <div className="form-group password-group">
               <label htmlFor="password">Password</label>
               <input
                 type={showPassword ? "text" : "password"}
@@ -193,8 +214,19 @@ const AdminDashboard = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <span className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L7.414 11H13a1 1 0 100-2H7.414l2.293-2.293z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.894.893l3 3a1 1 0 001.106-.894V7z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
             </div>
-            <div className="form-group">
+            <div className="form-group password-group">
               <label htmlFor="confirm-password">Confirm Password</label>
               <input
                 type={showPassword ? "text" : "password"}
@@ -202,6 +234,17 @@ const AdminDashboard = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
+              <span className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L7.414 11H13a1 1 0 100-2H7.414l2.293-2.293z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.894.893l3 3a1 1 0 001.106-.894V7z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
             </div>
             <button type="submit" className="button">Create Account</button>
           </form>
