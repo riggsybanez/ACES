@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { db } from '../../firebase/authService'; // Import Firestore
-import { collection, getDocs, query, where, getDoc, doc, addDoc } from 'firebase/firestore';
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -9,223 +7,168 @@ const AdminDashboard = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState({ type: "", content: "" });
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [notification, setNotification] = useState(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-  
     if (password !== confirmPassword) {
-      setMessage({ type: "error", content: "Passwords do not match" });
+      setNotification({ type: "error", content: "Passwords do not match" });
       return;
     }
-  
-    try {
-      const docRef = await addDoc(collection(db, 'Evaluator'), {
-        Name: name,             
-        ID: parseInt(id, 10),   
-        Password: password      
-      });
-  
-      console.log("Evaluator account created with ID:", docRef.id);
-      setMessage({ type: "success", content: "Evaluator account created successfully" });
-  
-      setName("");
-      setId("");
-      setPassword("");
-      setConfirmPassword("");
-    } catch (error) {
-      console.error("Error adding document:", error);
-      setMessage({ type: "error", content: "An error occurred. Please try again." });
-    }
+
+    console.log("Admin account created", { name, id, password });
+
+    // Show success notification
+    setNotification({ type: "success", content: "Admin account created successfully" });
+
+    // Reset form
+    setName("");
+    setId("");
+    setPassword("");
+    setConfirmPassword("");
+
+    // Auto-hide notification after 5 seconds
+    setTimeout(() => setNotification(null), 5000);
   };
 
   return (
     <div className="dashboard" style={{ display: 'flex', minHeight: '100vh' }}>
       <style jsx>{`
-.dashboard {
-  display: flex;
-  height: 100vh;
-}
-
-.sidebar {
-  width: 250px;
-  background-color: white;
-  color: black;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.sidebar-header {
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.sidebar-header h1 {
-  font-size: 1.2rem;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.sidebar-header p {
-  font-size: 0.8rem;
-}
-
-.sidebar-item {
-  padding: 10px 15px;
-  cursor: pointer;
-  border-radius: 6px;
-  margin-bottom: 5px;
-  transition: background-color 0.3s ease;
-}
-
-.sidebar-item:hover {
-  background-color: #f0f0f0;
-}
-
-const coralColor = rgba(222, 120, 120, 1);
-
-.logout-button {
-  background-color: #ff4c4c; 
-  color: white; /* Set text color to white */
-  padding: 10px 15px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 20px;
-  transition: background-color 0.3s ease;
-}
-
-
-.logout-button:hover {
-  background-color: #fb8a8a; /* Lighter red hover */
-}
-
-.container {
-  color: #989898;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  
-  background-color: white; /* Added background color */
-}
-
-.button { //*create account
-  background-color: #ff4c4c; /* Red button */
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  font-size: 1rem; /* Adjusted font size */
-}
-.content {
-  flex: 1;
-  padding: 20px;
-}
-
-.title {
-  text-align: center;
-  margin-bottom: 20px;
-  color: #333; /* Darker text color */
-}
-
-.form-group {
-  margin-bottom: 15px;
-  width: 100%;
-  position: relative; /* Added for positioning */
-}
-
-label {
-  display: block;
-  margin-bottom: 5px;
-  color: #555; /* Slightly darker label color */
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  font-size: 1rem; /* Adjusted font size */
-}
-
-/* Smaller password fields */
-.password-group input {
-  width: calc(100% - 30px); /* Reduced width */
-  padding: 10px 15px; /* Adjusted padding */
-}
-
-.password-toggle {
-  position: absolute;
-  top: 45%;
-  right: 1px; /* Removed right: 20px */
-  transform: translateY(10%);
-  cursor: pointer;
-}
-
-
-
-.button:hover {
-  background-color: #fb8a8a; /* Lighter red hover */
-}
-
-.alert {
-  padding: 10px;
-  margin-bottom: 15px;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.alert.success {
-  background-color: #d1fae5;
-  color: #059669;
-}
-
-.alert.error {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-svg {
-  width: 30px;
-  height: 30px;
-}
+        .dashboard {
+          display: flex;
+          height: 100vh;
+        }
+        .sidebar {
+          width: 250px;
+          background-color: white;
+          color: black;
+          padding: 20px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .sidebar-header {
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .sidebar-header h1 {
+          font-size: 1.2rem;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .sidebar-header p {
+          font-size: 0.8rem;
+        }
+        .sidebar-item {
+          padding: 10px 15px;
+          cursor: pointer;
+          border-radius: 6px;
+          margin-bottom: 5px;
+          transition: background-color 0.3s ease;
+        }
+        .sidebar-item:hover {
+          background-color: #f0f0f0;
+        }
+        .logout-button {
+          background-color: #ff4c4c;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          margin-top: 20px;
+          transition: background-color 0.3s ease;
+        }
+        .logout-button:hover {
+          background-color: #fb8a8a;
+        }
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 400px;
+          margin: 50px auto;
+          padding: 20px;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          background-color: white;
+        }
+        .button {
+          background-color: #ff4c4c;
+          color: white;
+          padding: 12px 20px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.3s ease;
+          font-size: 1rem;
+        }
+        .button:hover {
+          background-color: #fb8a8a;
+        }
+        .form-group {
+          margin-bottom: 15px;
+          width: 100%;
+          position: relative;
+        }
+        label {
+          display: block;
+          margin-bottom: 5px;
+          color: #555;
+        }
+        input {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-sizing: border-box;
+          font-size: 1rem;
+        }
+        .notification {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background-color: #4caf50;
+          color: white;
+          padding: 15px;
+          border-radius: 6px;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-width: 250px;
+          transition: opacity 0.3s ease-in-out;
+        }
+        .notification.error {
+          background-color: #ff4c4c;
+        }
+        .close-btn {
+          margin-left: 10px;
+          background: none;
+          border: none;
+          color: white;
+          font-size: 18px;
+          cursor: pointer;
+        }
       `}</style>
 
       {/* Sidebar */}
       <div className="sidebar">
         <div className="sidebar-header">
-          <h1>JOHN SMITH</h1>
-          <p>Course Evaluator</p>
+          <h1>JANE SMITH</h1>
+          <p>Administrative Assistant</p>
         </div>
         <div onClick={() => navigate('/admin-dashboard')} className="sidebar-item">🏠 Home</div>
-        <div onClick={() => navigate('')} className="sidebar-item">📅 ???</div>
-        <div onClick={() => navigate('/reports')} className="sidebar-item">📄 Accounts List</div>
-
-        
+        <div onClick={() => navigate('/evaluator-accounts')} className="sidebar-item">📄 List of Evaluators</div>
         <button onClick={() => navigate('/login')} className="logout-button">Logout</button>
       </div>
 
       {/* Main Content */}
       <div className="content">
         <div className="container">
-          <h2 className="title">Evaluator Account Creation</h2>
-          {message.content && (
-            <div className={`alert ${message.type === "error" ? "error" : "success"}`}>
-              {message.content}
-            </div>
-          )}
+          <h2 className="title">Admin Account Creation</h2>
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="name">Name of New Evaluator</label>
+              <label htmlFor="name">Name of New Admin</label>
               <input
                 type="text"
                 id="name"
@@ -242,7 +185,7 @@ svg {
                 onChange={(e) => setId(e.target.value)}
               />
             </div>
-            <div className="form-group password-group">
+            <div className="form-group">
               <label htmlFor="password">Password</label>
               <input
                 type={showPassword ? "text" : "password"}
@@ -250,19 +193,8 @@ svg {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <span className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L7.414 11H13a1 1 0 100-2H7.414l2.293-2.293z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.894.893l3 3a1 1 0 001.106-.894V7z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </span>
             </div>
-            <div className="form-group password-group">
+            <div className="form-group">
               <label htmlFor="confirm-password">Confirm Password</label>
               <input
                 type={showPassword ? "text" : "password"}
@@ -270,22 +202,19 @@ svg {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
-              <span className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L7.414 11H13a1 1 0 100-2H7.414l2.293-2.293z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.894.893l3 3a1 1 0 001.106-.894V7z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </span>
             </div>
             <button type="submit" className="button">Create Account</button>
           </form>
         </div>
       </div>
+
+      {/* Notification Pop-up */}
+      {notification && (
+        <div className={`notification ${notification.type}`}>
+          <span>{notification.content}</span>
+          <button className="close-btn" onClick={() => setNotification(null)}>✖</button>
+        </div>
+      )}
     </div>
   );
 };
