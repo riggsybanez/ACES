@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-// Add Tesseract.js for OCR
+import Tesseract from 'tesseract.js';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase/authService';
 
 const coralColor = 'rgba(255,79,78,255)';
 const STAGES = {
   UPLOAD: "upload",
+  PROCESSING: "processing",
   EXTRACTION: "extraction",
-  RESULTS: "results",
-  REVIEW: "review",
 };
 
 export default function EvaluateTab() {
@@ -16,40 +17,154 @@ export default function EvaluateTab() {
   const [file, setFile] = useState(null);
   const [email, setEmail] = useState("");
   const [studentName, setStudentName] = useState("");
-  const [extractedCourses, setExtractedCourses] = useState([]);
-  const [remarks, setRemarks] = useState({});
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   const handleFileUpload = (e) => setFile(e.target.files[0]);
 
-  const handleExtract = () => {
+  const handleExtract = async () => {
     if (!file || !email || !studentName) {
       alert("Please fill out all fields and upload a file before extracting.");
       return;
     }
 
-    // Start OCR processing when an image is uploaded
-    Tesseract.recognize(
-      file,
-      'eng', // Language setting for OCR
-      {
-        logger: (m) => console.log(m), // Logs OCR progress
-      }
-    ).then(({ data: { text } }) => {
-      console.log(text);  // Text output from the image
-      // For now, mock the extracted data based on the OCR text
-      setExtractedCourses([
-        { number: "CS101", title: "Intro to Programming", description: "Basic programming", credits: 3, gpa: 3.5, remark: "" },
-        { number: "MATH201", title: "Calculus I", description: "Limits and derivatives", credits: 4, gpa: 3.0, remark: "" },
-        { number: "PHYS101", title: "Physics I", description: "Mechanics and thermodynamics", credits: 4, gpa: 3.2, remark: "" },
-      ]);
-      setStage(STAGES.EXTRACTION);
-    }).catch((error) => {
-      alert("OCR failed: " + error.message);
-    });
+    // Set processing stage
+    setStage(STAGES.PROCESSING);
+    setProcessingProgress(0);
+
+    try {
+      // Start OCR processing
+      const result = await Tesseract.recognize(
+        file,
+        'eng',
+        {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              setProcessingProgress(parseInt(m.progress * 100));
+            }
+            console.log(m);
+          }
+        }
+      );
+
+      const extractedText = result.data.text;
+      console.log("Extracted Text:", extractedText);
+
+      // Parse the extracted text to get course information
+      const extractedData = parseTranscriptText(extractedText);
+      
+      // Generate student ID if none was extracted
+      const studentId = extractedData.studentId || generateStudentId();
+      
+      // Create a document in Firestore with the structured data
+      const docRef = await addDoc(collection(db, "ExtractedCourses"), {
+        studentName: extractedData.studentName || studentName,
+        studentId: studentId,
+        program: extractedData.program || "Not Specified",
+        email: email,
+        courses: extractedData.courses,
+        timestamp: serverTimestamp(),
+        status: "pending"
+      });
+      
+      console.log("Document written with ID: ", docRef.id);
+
+      // Store the document ID in localStorage for the results page
+      localStorage.setItem('currentEvaluationId', docRef.id);
+
+      // Navigate to results page
+      navigate('/evaluation-results');
+    } catch (error) {
+      console.error("Processing Error:", error);
+      alert("Processing failed: " + error.message);
+      setStage(STAGES.UPLOAD);
+    }
   };
 
-  const handleRemarkChange = (courseNumber, value) => {
-    setRemarks((prevRemarks) => ({ ...prevRemarks, [courseNumber]: value }));
+  // Generate a random student ID
+  const generateStudentId = () => {
+    return `${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+  };
+
+  // Function to parse transcript text and extract structured data
+  const parseTranscriptText = (text) => {
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+    
+    // Extract student information
+    const studentNameLine = lines.find(line => line.includes('Name of Student')) || '';
+    const extractedStudentName = studentNameLine.split(':')[1]?.trim() || '';
+    
+    // Extract course information
+    const courses = [];
+    let isCourseSection = false;
+    let currentSemester = '';
+  
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Look for semester information
+      if (line.includes('Semester') || line.match(/\d{4}\s*-\s*\d{4}/)) {
+        currentSemester = line.trim();
+      }
+      
+      // Check if we're in the course section
+      if (line.includes('Course No') || line.includes('Descriptive Title')) {
+        isCourseSection = true;
+        continue;
+      }
+  
+      if (isCourseSection) {
+        // Try to match course patterns - this is a simplified approach
+        const parts = line.split(/\s{2,}/).filter(part => part.trim());
+        
+        if (parts.length >= 3) {
+          // Attempt to extract course code, title and grade
+          const courseCode = parts[0].trim();
+          const courseTitle = parts[1].trim();
+          let grade = '';
+          let credits = 0;
+          
+          // Look for grade and credits in the remaining parts
+          for (let j = 2; j < parts.length; j++) {
+            const part = parts[j].trim();
+            if (/^[A-F][+\-]?$|^P$|^F$|^INC$|^FD$/.test(part)) {
+              grade = part;
+            } else if (/^\d+$/.test(part)) {
+              credits = parseInt(part);
+            }
+          }
+          
+          if (courseCode && courseTitle) {
+            courses.push({
+              number: courseCode,
+              title: courseTitle,
+              credits: credits || 3, // Default to 3 if not found
+              grade: grade || 'N/A',
+              semester: currentSemester
+            });
+          }
+        }
+        
+        // Exit course section if we hit a line that indicates the end
+        if (line.includes('Transcript Closed') || line.includes('END OF TRANSCRIPT')) {
+          isCourseSection = false;
+        }
+      }
+    }
+  
+    // Extract program information if available
+    const programLine = lines.find(line => 
+      line.includes('University') || 
+      line.includes('College') || 
+      line.includes('UNIVERSITY') || 
+      line.includes('COLLEGE')
+    ) || '';
+    
+    return {
+      studentName: extractedStudentName,
+      studentId: "",
+      program: programLine.trim(),
+      courses: courses
+    };
   };
 
   return (
@@ -88,40 +203,17 @@ export default function EvaluateTab() {
             </div>
           )}
 
-          {stage === STAGES.EXTRACTION && (
-            <div>
-              <h3>Extracted Courses</h3>
-              <table className="course-table">
-                <thead>
-                  <tr>
-                    <th>Course Number</th>
-                    <th>Course Title</th>
-                    <th>Description</th>
-                    <th>Credits</th>
-                    <th>GPA</th>
-                    <th>Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {extractedCourses.map((course) => (
-                    <tr key={course.number}>
-                      <td>{course.number}</td>
-                      <td>{course.title}</td>
-                      <td>{course.description}</td>
-                      <td>{course.credits}</td>
-                      <td>{course.gpa}</td>
-                      <td>
-                        <input
-                          type="text"
-                          value={remarks[course.number] || ""}
-                          onChange={(e) => handleRemarkChange(course.number, e.target.value)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button className="extract-button" onClick={() => setStage(STAGES.RESULTS)}>Proceed to Results</button>
+          {stage === STAGES.PROCESSING && (
+            <div className="processing-container">
+              <h3>Processing Transcript</h3>
+              <div className="progress-bar">
+                <div 
+                  className="progress-bar-fill" 
+                  style={{ width: `${processingProgress}%` }}
+                ></div>
+              </div>
+              <p>{processingProgress}% Complete</p>
+              <p className="processing-note">This may take a minute or two. Please don't refresh the page.</p>
             </div>
           )}
         </div>
@@ -208,28 +300,28 @@ export default function EvaluateTab() {
           cursor: pointer;
           font-weight: bold;
         }
-        .course-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 20px;
-          background-color: black;
-          color: white;
+        .processing-container {
+          text-align: center;
+          padding: 40px;
+          max-width: 500px;
+          margin: 0 auto;
         }
-        .course-table th, .course-table td {
-          border: 1px solid #ddd;
-          padding: 8px;
-          text-align: left;
+        .progress-bar {
+          height: 20px;
+          background-color: #e0e0e0;
+          border-radius: 10px;
+          margin: 20px 0;
+          overflow: hidden;
         }
-        .course-table th {
-          background-color: #333;
+        .progress-bar-fill {
+          height: 100%;
+          background-color: ${coralColor};
+          transition: width 0.3s ease;
         }
-        .course-table td input {
-          width: 100%;
-          padding: 0.5rem;
-          background-color: #444;
-          color: white;
-          border: 1px solid #888;
-          border-radius: 4px;
+        .processing-note {
+          font-size: 0.9rem;
+          color: #666;
+          margin-top: 15px;
         }
       `}</style>
     </div>
