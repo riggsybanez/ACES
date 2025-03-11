@@ -1,5 +1,9 @@
 import React, { useState } from "react";
+<<<<<<< HEAD
 import { useNavigate } from "react-router-dom";
+=======
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+>>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
 
 const AdminDashboard = () => {
   const [name, setName] = useState("");
@@ -16,20 +20,29 @@ const AdminDashboard = () => {
       setNotification({ type: "error", content: "Passwords do not match" });
       return;
     }
+<<<<<<< HEAD
 
     console.log("Admin account created", { name, id, password });
 
     // Show success notification
     setNotification({ type: "success", content: "Admin account created successfully" });
 
+=======
+    // Here you would typically make an API call to create the account
+    console.log("Admin account created", { name, id, password });
+    setMessage({ type: "success", content: "Admin account created successfully" });
+>>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
     // Reset form
     setName("");
     setId("");
     setPassword("");
     setConfirmPassword("");
+<<<<<<< HEAD
 
     // Auto-hide notification after 5 seconds
     setTimeout(() => setNotification(null), 5000);
+=======
+>>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
   };
 
   return (
@@ -154,7 +167,11 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <div className="sidebar">
         <div className="sidebar-header">
+<<<<<<< HEAD
           <h1>JANE SMITH</h1>
+=======
+          <h1>JOHN SMITH</h1>
+>>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
           <p>Administrative Assistant</p>
         </div>
         <div onClick={() => navigate('/admin-dashboard')} className="sidebar-item">🏠 Home</div>
@@ -166,6 +183,14 @@ const AdminDashboard = () => {
       <div className="content">
         <div className="container">
           <h2 className="title">Admin Account Creation</h2>
+<<<<<<< HEAD
+=======
+          {message.content && (
+            <div className={`alert ${message.type === "error" ? "error" : "success"}`}>
+              {message.content}
+            </div>
+          )}
+>>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="name">Name of New Admin</label>
