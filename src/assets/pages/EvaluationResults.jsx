@@ -1,26 +1,7 @@
-<<<<<<< HEAD
-import { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-export default function ExtractionResults() {
-  const navigate = useNavigate();
-  const [stage, setStage] = useState("extraction"); // Start at EXTRACTION stage for demo
-  const [extractedCourses, setExtractedCourses] = useState([
-    { number: "MATH101", title: "Calculus I", credits: 3, grade: "A" },
-    { number: "PHYS101", title: "Physics I", credits: 4, grade: "D" },
-    { number: "CS101", title: "Introduction to Programming", credits: 3, grade: "B+" },
-    { number: "ENG101", title: "English Composition", credits: 3, grade: "P" },
-    { number: "HIST101", title: "World History", credits: 3, grade: "B" },
-  ]);
-  const [studentName, setStudentName] = useState("Juan Dela Cruz");
-  const [studentId, setStudentId] = useState("2023-12345");
-  const [selectedProgram, setSelectedProgram] = useState("BS Computer Science");
-
-=======
-import { useState, useEffect } from "react";
-import { useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase/authService'; // Make sure this points to your Firebase config
+import { db } from '../../firebase/authService';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function ExtractionResults() {
   const navigate = useNavigate();
@@ -28,57 +9,26 @@ export default function ExtractionResults() {
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [selectedProgram, setSelectedProgram] = useState("");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Get the evaluation ID from localStorage
-        const evaluationId = localStorage.getItem('currentEvaluationId');
-        
-        if (!evaluationId) {
-          throw new Error('No evaluation ID found. Please start a new evaluation.');
-        }
-        
-        // Fetch the document from Firestore
-        const docRef = doc(db, "ExtractedCourses", evaluationId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setExtractedCourses(data.courses || []);
-          setStudentName(data.studentName || "");
-          setStudentId(data.studentId || "");
-          setSelectedProgram(data.program || "");
-          setEmail(data.email || "");
-        } else {
-          throw new Error('Evaluation data not found.');
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
+    const fetchCourses = async () => {
+      const querySnapshot = await getDocs(collection(db, 'ExtractedCourses'));
+      if (!querySnapshot.empty) {
+        const data = querySnapshot.docs[0].data(); // Assuming you want the latest document
+        setExtractedCourses(data.courses);
+        setStudentName(data.studentName);
+        setStudentId(data.studentId || ""); // Ensure studentId is part of the data
+        setSelectedProgram(data.program);
       }
     };
-    
-    fetchData();
+    fetchCourses();
   }, []);
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
 
   return (
     <div className="container">
       <div className="sidebar">
         <div className="sidebar-header">
-<<<<<<< HEAD
           <h1>John Doe</h1>
-=======
-          <h1>John Smith</h1>
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
           <p>Course Evaluator</p>
         </div>
         <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item">🏠 Home</div>
@@ -88,7 +38,6 @@ export default function ExtractionResults() {
       </div>
 
       <div className="main-content">
-<<<<<<< HEAD
         <div>
           <h2>Extracted Course Information</h2>
           <div className="student-info">
@@ -126,80 +75,9 @@ export default function ExtractionResults() {
             <p>The system will now compare these extracted courses with the program prospectus to determine course equivalency and evaluation status.</p>
           </div>
         </div>
-=======
-        {loading ? (
-          <div className="loading">
-            <p>Loading evaluation data...</p>
-          </div>
-        ) : error ? (
-          <div className="error-message">
-            <h3>Error</h3>
-            <p>{error}</p>
-            <button 
-              className="back-button" 
-              onClick={() => navigate('/course-evaluation')}
-            >
-              Back to Evaluation
-            </button>
-          </div>
-        ) : (
-          <div>
-            <h2>Extracted Course Information</h2>
-            <div className="student-info">
-              <div>
-                <p>Student Name: {studentName}</p>
-                <p>Program: {selectedProgram}</p>
-                <p>Email: {email}</p>
-              </div>
-              <div>
-                <p>Student ID: {studentId}</p>
-                <p>Total Courses Extracted: {extractedCourses.length}</p>
-              </div>
-            </div>
-            
-            {extractedCourses.length === 0 ? (
-              <div className="no-courses">
-                <p>No courses were found in the uploaded transcript. Please try again with a clearer image.</p>
-              </div>
-            ) : (
-              <table className="course-table">
-                <thead>
-                  <tr>
-                    <th>Course Number</th>
-                    <th>Course Title</th>
-                    <th>Credits</th>
-                    <th>Grade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {extractedCourses.map((course, index) => (
-                    <tr key={index}>
-                      <td>{course.number}</td>
-                      <td>{course.title}</td>
-                      <td>{course.credits}</td>
-                      <td>{course.grade}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            
-            <div className="next-steps">
-              <h3>Next Steps</h3>
-              <p>The system will now compare these extracted courses with the program prospectus to determine course equivalency and evaluation status.</p>
-            </div>
-            <div className="button-container">
-              <button className="back-button" onClick={() => navigate('/course-evaluation')}>
-                Back to Evaluation
-              </button>
-            </div>
-          </div>
-        )}
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
       </div>
 
       <style>{`
-        /* Styles for the entire page */
         .container {
           display: flex;
           min-height: 100vh;
@@ -237,7 +115,7 @@ export default function ExtractionResults() {
         }
 
         .logout-button {
-          background-color: #ff4f4e; /* Coral color */
+          background-color: #ff4f4e;
           color: white;
           padding: 10px 20px;
           border: none;
@@ -255,12 +133,6 @@ export default function ExtractionResults() {
           display: flex;
           justify-content: space-between;
           margin-bottom: 20px;
-<<<<<<< HEAD
-=======
-          padding: 15px;
-          background-color: #f8f8f8;
-          border-radius: 8px;
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
         }
 
         .student-info div {
@@ -281,61 +153,19 @@ export default function ExtractionResults() {
         }
 
         .course-table th {
-<<<<<<< HEAD
           background-color: #f2f2f2;
-=======
-          background-color: #ff4f4e;
-          color: white;
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
         }
 
         .next-steps {
           border: 1px solid #ddd;
           padding: 15px;
           border-radius: 6px;
-<<<<<<< HEAD
-=======
-          margin-bottom: 20px;
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399
         }
 
         .next-steps h3 {
           margin-top: 0;
         }
-<<<<<<< HEAD
       `}</style>
     </div>
   );
 }
-=======
-        
-        .button-container {
-          display: flex;
-          justify-content: flex-end;
-        }
-        
-        .back-button {
-          background-color: #ff4f4e;
-          color: white;
-          padding: 10px 20px;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-
-        .loading, .error-message, .no-courses {
-          text-align: center;
-          padding: 40px;
-          background-color: #f8f8f8;
-          border-radius: 8px;
-          margin: 20px 0;
-        }
-
-        .error-message {
-          color: #ff4f4e;
-        }
-      `}</style>
-    </div>
-  );
-}
->>>>>>> b0a224fa7cc92f0668e5f4404a4722f8ca58c399

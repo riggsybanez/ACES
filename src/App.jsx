@@ -8,8 +8,8 @@ import EvaluatorAccounts from './assets/pages/EvaluatorAccounts';
 import EvaluatorDashboard from './assets/pages/EvaluatorDashboard';
 import EvaluationHistory from './assets/pages/EvaluationHistory';
 import ExtractionResults from './assets/pages/EvaluationResults';
-
-
+import StudentStatus from './assets/pages/StudentStatus';
+import EmailCheck from './assets/pages/EmailCheck';
 
 function App() {
   return (
@@ -22,7 +22,8 @@ function App() {
       <Route path="/evaluator-accounts" element={<EvaluatorAccounts />} />
       <Route path="/course-evaluation" element={<EvaluateTab />} />
       <Route path="/evaluation-results" element={<ExtractionResults />} />
-
+      <Route path="/student-status" element={<StudentStatus />} />
+      <Route path="/check-status" element={<EmailCheck />} />
     </Routes>
   );
 }

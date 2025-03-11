@@ -69,7 +69,7 @@ const StartingPage = () => {
       <div className="home-container">
         <img src="uiclogo.png" alt="University Logo" className="logo" /> {/* Add your logo */}
         <div className="button-container">
-          <button onClick={() => navigate('/route1')} className="custom-button red">
+          <button onClick={() => navigate('/check-status')} className="custom-button red">
             Check Evaluation Status
           </button>
           <button onClick={() => navigate('/login')} className="custom-button blue">
