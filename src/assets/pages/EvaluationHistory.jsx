@@ -108,15 +108,20 @@ const EvaluationHistory = () => {
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
       <div className="sidebar">
-        <div className="sidebar-header">
-          <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>JOHN SMITH</h1>
-          <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
-        </div>
-        <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item">🏠 Home</div>
-        <div onClick={() => navigate('/course-evaluation')} className="sidebar-item">📅 Course Evaluation</div>
-        <div onClick={() => navigate('/history')} className="sidebar-item">📄 Evaluation History</div>
-        <button onClick={() => navigate('/login')} className="logout-button">Logout</button>
-      </div>
+  <div className="sidebar-content">
+    <div className="sidebar-header">
+      <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>JOHN SMITH</h1>
+      <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
+    </div>
+    <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item">🏠 Home</div>
+    <div onClick={() => navigate('/course-evaluation')} className="sidebar-item">📅 Course Evaluation</div>
+    <div onClick={() => navigate('/history')} className="sidebar-item active">📄 Evaluation History</div>
+    <div onClick={() => navigate('/student-archives')} className="sidebar-item">📚 Student Archives</div>
+  </div>
+  <div className="logout-container">
+    <button onClick={() => navigate('/login')} className="logout-button">Logout</button>
+  </div>
+</div>
 
       {/* Main Content */}
       <div className="main-content">
@@ -216,11 +221,17 @@ const EvaluationHistory = () => {
           background-color: white;
           color: black;
           width: 250px;
-          padding: 20px;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           height: 100vh;
           position: sticky;
           top: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .sidebar-content {
+          padding: 20px;
+          flex-grow: 1;
         }
         .sidebar-header {
           margin-bottom: 20px;
@@ -238,6 +249,16 @@ const EvaluationHistory = () => {
         .sidebar-item:hover {
           background-color: #f0f0f0;
         }
+        .sidebar-item.active {
+          background-color: #f0f0f0; /* sidebar darken - this is actually a light gray */
+          font-weight: bold;
+        }
+        .logout-container {
+          padding: 20px;
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
         .logout-button {
           background-color: ${coralColor};
           color: white;
@@ -246,7 +267,6 @@ const EvaluationHistory = () => {
           border-radius: 6px;
           cursor: pointer;
           font-weight: bold;
-          margin-top: 20px;
           width: 100%;
           transition: opacity 0.3s;
         }

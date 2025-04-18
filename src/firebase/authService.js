@@ -2,7 +2,10 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore"; // Import Firestore
-import { getAuth } from "firebase/auth"; // Import Authentication
+import { getAuth, 
+  signInWithEmailAndPassword, 
+  signOut,
+  onAuthStateChanged } from "firebase/auth"; // Import Authentication
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 

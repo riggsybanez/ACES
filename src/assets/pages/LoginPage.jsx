@@ -1,59 +1,39 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../../firebase/authService'; // Import Firestore
-import { collection, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
-
+import { useAuth } from '../../context/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
 
     try {
-      const adminDocRef = doc(db, 'Admin', 'Admin');
-      const adminDocSnap = await getDoc(adminDocRef);
-
-      if (adminDocSnap.exists()) {
-        const adminData = adminDocSnap.data();
-        
-        if (adminData.Password === password && adminData.ID === parseInt(username)) {
+      const result = await login(username, password);
+      
+      if (result.success) {
+        if (result.role === 'admin') {
           navigate('/admin-dashboard');
-          return;
+        } else {
+          navigate('/evaluator-dashboard');
         }
+      } else {
+        setError(result.error);
       }
-
-      const evaluatorQuery = query(
-        collection(db, 'Evaluator'),
-        where('ID', '==', parseInt(username))
-      );
-      const evaluatorSnapshot = await getDocs(evaluatorQuery);
-
-      if (!evaluatorSnapshot.empty) {
-        const evaluatorData = evaluatorSnapshot.docs[0].data();
-
-        if (evaluatorData.Password === password) {
-          if (evaluatorData.Active === true) {
-            navigate('/evaluator-dashboard');
-            return;
-        }
-        else {
-          setError('Account is inactive. Please contact the admin.');
-          return;
-        }
-        }
-      }
-
-      setError('Invalid credentials. Please try again.');
     } catch (err) {
-      console.error('Error fetching credentials:', err);
+      console.error('Login error:', err);
       setError('An error occurred. Please try again.');
     }
+    
+    setLoading(false);
   };
-
 
   return (
     <div className="login-container">
@@ -67,6 +47,7 @@ const LoginPage = () => {
             className="input-field"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
           />
           <input
             type="password"
@@ -74,9 +55,10 @@ const LoginPage = () => {
             className="input-field"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
           />
-          <button type="submit" className="login-button">
-            Login
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>

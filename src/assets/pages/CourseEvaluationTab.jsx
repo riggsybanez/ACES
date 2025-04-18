@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
-import programProspectus from '../data/programProspectusData';
+import { db } from '../../firebase/authService'; // Import db from authService.js
+import { collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
 
 const coralColor = 'rgba(255,79,78,255)';
 
@@ -23,40 +24,40 @@ export default function CourseEvaluationTab() {
   const [showProspectus, setShowProspectus] = useState(false);
   
   // State for year and semester selection
-  const [selectedYear, setSelectedYear] = useState("1st Year");
-  const [selectedSemester, setSelectedSemester] = useState("1st Semester");
+  const [selectedYear, setSelectedYear] = useState("firstyear");
+  const [selectedSemester, setSelectedSemester] = useState("firstSem");
   const [currentProspectus, setCurrentProspectus] = useState([]);
   
   // State for dropdowns
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [semesterDropdownOpen, setSemesterDropdownOpen] = useState(false);
 
+  const fetchProspectusData = async () => {
+    try {
+      const coursesCollection = collection(db, `Program/${program}/${selectedYear}/${selectedSemester}/courses`);
+      const courseSnapshot = await getDocs(coursesCollection);
+      const courses = courseSnapshot.docs.map(doc => ({
+        code: doc.id,  // Assuming the document ID is the course code
+        title: doc.data().title,
+        units: doc.data().unitstotal
+      }));
+      setCurrentProspectus(courses);
+    } catch (error) {
+      console.error("Error fetching prospectus data: ", error);
+    }
+  };
+
   // Update prospectus when program, year, or semester changes
   useEffect(() => {
-    if (programProspectus[program] && 
-        programProspectus[program][selectedYear] && 
-        programProspectus[program][selectedYear][selectedSemester]) {
-      setCurrentProspectus(programProspectus[program][selectedYear][selectedSemester]);
-    } else {
-      setCurrentProspectus([]);
-    }
+    fetchProspectusData();
   }, [program, selectedYear, selectedSemester]);
 
   // Reset year/semester when program changes
   useEffect(() => {
-    if (programProspectus[program]) {
-      const years = Object.keys(programProspectus[program]);
-      if (years.length > 0) {
-        setSelectedYear(years[0]);
-        
-        const semesters = Object.keys(programProspectus[program][years[0]] || {});
-        if (semesters.length > 0) {
-          setSelectedSemester(semesters[0]);
-        }
-      }
-    }
+    setSelectedYear("1st Year");
+    setSelectedSemester("1st Semester");
   }, [program]);
-
+  
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -102,192 +103,97 @@ export default function CourseEvaluationTab() {
 
   // Get available semesters for a year
   const getAvailableSemesters = (year) => {
-    if (programProspectus[program] && programProspectus[program][year]) {
-      return Object.keys(programProspectus[program][year]);
-    }
-    return [];
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Navigation Sidebar */}
-      <div style={{
-        width: '250px',
-        backgroundColor: '#f4f4f4',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        height: '100vh',
-        justifyContent: 'space-between',
-        boxSizing: 'border-box',
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        zIndex: 10,
-        boxShadow: '2px 0 5px rgba(0,0,0,0.1)',
-      }}>
-        <div>
-          <div style={{ textAlign: 'center', marginBottom: '20px', padding: '20px 0' }}>
-            <h2 style={{ margin: 0 }}>JOHN DOE</h2>
-            <p style={{ margin: '5px 0 0 0' }}>Course Evaluator</p>
+      <div className="sidebar">
+        <div className="sidebar-content">
+          <div className="sidebar-header">
+            <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>JOHN SMITH</h1>
+            <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
           </div>
-          <div onClick={() => navigate('/evaluator-dashboard')} style={{
-            padding: '10px 20px',
-            cursor: 'pointer',
-            width: '100%',
-            textAlign: 'left',
-            boxSizing: 'border-box',
-            transition: 'background-color 0.2s',
-          }}>🏠 Home</div>
-          <div onClick={() => navigate('/course-evaluation')} style={{
-            padding: '10px 20px',
-            cursor: 'pointer',
-            width: '100%',
-            textAlign: 'left',
-            backgroundColor: '#ddd',
-            boxSizing: 'border-box',
-          }}>📅 Course Evaluation</div>
-          <div onClick={() => navigate('/history')} style={{
-            padding: '10px 20px',
-            cursor: 'pointer',
-            width: '100%',
-            textAlign: 'left',
-            boxSizing: 'border-box',
-            transition: 'background-color 0.2s',
-          }}>📄 Evaluation History</div>
+          <div className="sidebar-item" onClick={() => navigate('/evaluator-dashboard')}>
+            🏠 Home
+          </div>
+          <div className="sidebar-item active" onClick={() => navigate('/course-evaluation')}>
+            📅 Course Evaluation
+          </div>
+          <div className="sidebar-item" onClick={() => navigate('/history')}>
+            📄 Evaluation History
+          </div>
+          <div className="sidebar-item" onClick={() => navigate('/student-archives')}>
+            📚 Student Archives
+          </div>
         </div>
-        <button onClick={() => navigate('/login')} style={{
-          padding: '10px 20px',
-          backgroundColor: coralColor,
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          alignSelf: 'center',
-          marginTop: 'auto',
-          marginBottom: '20px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          transition: 'background-color 0.2s',
-        }}>
-          Logout
-        </button>
+        <div className="logout-container">
+          <button className="logout-button" onClick={() => navigate('/login')}>
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Main content area */}
-      <div style={{
-        display: 'flex',
-        marginLeft: '250px',
-        width: 'calc(100% - 250px)',
-        boxSizing: 'border-box',
-        transition: 'all 0.3s ease',
-      }}>
-        {/* Evaluation Form Column */}
-        <div style={{
-          flex: showProspectus ? '1' : '1',
-          padding: '20px',
-          backgroundColor: '#fff',
-          boxSizing: 'border-box',
-          minWidth: showProspectus ? '60%' : '100%',
-          transition: 'all 0.3s ease',
-        }}>
-          <h2 style={{ 
-            borderBottom: '2px solid ' + coralColor, 
-            paddingBottom: '10px',
-            color: '#333'
-          }}>Course Evaluation</h2>
+      <div className="main-content">
+        <h2>Course Evaluation</h2>
+        
+        <div className="filter-container">
+          <h3 style={{ marginTop: 0, color: '#555' }}>Evaluation Process</h3>
           
-          <div style={{ padding: '10px 0' }}>
-            <h3 style={{ color: '#555' }}>Evaluation Process</h3>
-            
-            {/* Upload Stage */}
-            {stage === STAGES.UPLOAD && (
-              <div style={{
-                backgroundColor: '#f9f9f9',
-                padding: '20px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-              }}>
-                <div style={{ marginBottom: '15px' }}>
-                  <label htmlFor="transcript" style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                    Upload Transcript (JPEG/PNG)
-                  </label>
+          {/* Upload Stage */}
+          {stage === STAGES.UPLOAD && (
+            <div>
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label htmlFor="transcript">Upload Transcript (JPEG/PNG)</label>
                   <input 
                     type="file" 
                     id="transcript"
                     onChange={handleFileUpload} 
                     accept="image/jpeg, image/png"
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: '#fff',
-                    }} 
+                    className="filter-input"
                     aria-label="Upload transcript file"
                   />
                 </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label htmlFor="email" style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                    Assign Email
-                  </label>
+              </div>
+              
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label htmlFor="email">Student Email</label>
                   <input 
                     type="email" 
                     id="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="student@example.com" 
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: '#fff',
-                    }} 
+                    className="filter-input"
                     aria-label="Student email"
                   />
                 </div>
                 
-                <div style={{ marginBottom: '15px' }}>
-                  <label htmlFor="studentName" style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                    Student Name
-                  </label>
+                <div className="filter-group">
+                  <label htmlFor="studentName">Student Name</label>
                   <input 
                     type="text" 
                     id="studentName"
                     value={studentName} 
                     onChange={(e) => setStudentName(e.target.value)} 
                     placeholder="John Doe"
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: '#fff',
-                    }} 
+                    className="filter-input"
                     aria-label="Student name"
                   />
                 </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                  <label htmlFor="program" style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
-                    Select Program
-                  </label>
+              </div>
+              
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label htmlFor="program">Select Program</label>
                   <select 
                     id="program" 
                     value={program}
                     onChange={(e) => setProgram(e.target.value)} 
-                    style={{
-                      width: '100%',
-                      maxWidth: '400px',
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      backgroundColor: 'black',
-                    }}
+                    className="filter-select"
                     aria-label="Program selection"
                   >
                     <option value="Computer Science">Computer Science</option>
@@ -295,373 +201,651 @@ export default function CourseEvaluationTab() {
                     <option value="Information Technology">Information Technology</option>
                   </select>
                 </div>
-                
+              </div>
+              
+              <div className="action-buttons">
                 <button 
                   onClick={handleExtract} 
-                  style={{
-                    backgroundColor: coralColor,
-                    color: 'white',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    transition: 'background-color 0.2s',
-                  }}
+                  className="action-button save"
                   aria-label="Extract information from transcript"
                 >
                   Extract Information
                 </button>
               </div>
-            )}
-            
-            {/* Extraction Results Stage */}
-            {stage === STAGES.EXTRACTION && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h3 style={{ margin: 0 }}>Extracted Courses</h3>
-                  {/* Toggle Prospectus Button */}
-                  <button 
-                    onClick={() => setShowProspectus(!showProspectus)} 
-                    style={{
-                      backgroundColor: showProspectus ? '#f0f0f0' : coralColor,
-                      color: showProspectus ? '#333' : 'black',
-                      padding: '6px 12px',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                    }}
-                    aria-label={showProspectus ? "Hide prospectus" : "Show prospectus"}
-                  >
-                    {showProspectus ? '🔍 Hide Prospectus' : '🔍 Show Prospectus'}
-                  </button>
-                </div>
-                
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '650px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f5f5f5' }}>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'left' }}>Course Number</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'left' }}>Course Title</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'left' }}>Description</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>Credits</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>GPA</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'left' }}>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {extractedCourses.map((course, idx) => (
-                        <tr key={course.number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                          <td style={{ padding: '10px', border: '1px solid #ddd' }}>{course.number}</td>
-                          <td style={{ padding: '10px', border: '1px solid #ddd' }}>{course.title}</td>
-                          <td style={{ padding: '10px', border: '1px solid #ddd' }}>{course.description}</td>
-                          <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>{course.credits}</td>
-                          <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>{course.gpa}</td>
-                          <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                            <input
-                              type="text"
-                              value={remarks[course.number] || ""}
-                              onChange={(e) => handleRemarkChange(course.number, e.target.value)}
-                              placeholder="Add remarks"
-                              style={{
-                                width: '100%',
-                                padding: '5px',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                              }}
-                              aria-label={`Remarks for ${course.title}`}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                <button 
-                  onClick={() => setStage(STAGES.RESULTS)}
-                  style={{
-                    backgroundColor: coralColor,
-                    color: 'white',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    marginTop: '20px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    transition: 'background-color 0.2s',
-                  }}
-                  aria-label="Proceed to evaluation results"
-                >
-                  Proceed to Results
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Prospectus Sidebar - Only shown when needed */}
-        {showProspectus && (
-          <div style={{
-            width: '400px',
-            padding: '20px',
-            backgroundColor: 'black',
-            borderLeft: '1px solid #ddd',
-            height: '100vh',
-            position: 'sticky',
-            top: 0,
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-            transition: 'all 0.3s ease',
-            boxShadow: '-2px 0 5px rgba(0,0,0,0.05)',
-          }}>
-            <div style={{ position: 'sticky', top: 0, backgroundColor: '#f9f9f9', zIndex: 5, paddingBottom: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h3 style={{ margin: 0, color: '#333' }}>{program} Prospectus</h3>
-                <button 
-                  onClick={() => setShowProspectus(false)} 
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: '#666',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '1.2rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '50%',
-                    transition: 'background-color 0.2s',
-                  }}
-                  aria-label="Close prospectus"
-                >
-                  ×
-                </button>
-              </div>
-              
-              {/* Year and Semester Dropdowns */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '10px', 
-                marginBottom: '15px',
-                justifyContent: 'space-between'
-              }}>
-                {/* Year Dropdown */}
-                <div style={{ 
-                  position: 'relative', 
-                  width: '48%',
-                }}>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setYearDropdownOpen(!yearDropdownOpen);
-                      setSemesterDropdownOpen(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: 'black',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    }}
-                    aria-haspopup="true"
-                    aria-expanded={yearDropdownOpen}
-                  >
-                    {selectedYear} <span style={{ marginLeft: '5px' }}>▼</span>
-                  </button>
-                  
-                  {yearDropdownOpen && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      width: '100%',
-                      backgroundColor: '#fff',
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                      zIndex: 10,
-                      marginTop: '5px',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    >
-                      {Object.keys(programProspectus[program] || {}).map((year) => (
-                        <div 
-                          key={year}
-                          onClick={() => {
-                            setSelectedYear(year);
-                            setYearDropdownOpen(false);
-                            // Set semester to first available one
-                            const semesters = getAvailableSemesters(year);
-                            if (semesters.length > 0) {
-                              setSelectedSemester(semesters[0]);
-                            }
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            backgroundColor: selectedYear === year ? '#f5f5f5' : 'transparent',
-                            transition: 'background-color 0.2s',
-                            borderBottom: '1px solid #eee',
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9f9f9';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = selectedYear === year ? '#f5f5f5' : 'transparent';
-                          }}
-                        >
-                          {year}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Semester Dropdown */}
-                <div style={{ 
-                  position: 'relative', 
-                  width: '48%',
-                }}>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSemesterDropdownOpen(!semesterDropdownOpen);
-                      setYearDropdownOpen(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      backgroundColor: 'black',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    }}
-                    aria-haspopup="true"
-                    aria-expanded={semesterDropdownOpen}
-                  >
-                    {selectedSemester} <span style={{ marginLeft: '5px' }}>▼</span>
-                  </button>
-                  
-                  {semesterDropdownOpen && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      width: '100%',
-                      backgroundColor: '#fff',
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                      zIndex: 10,
-                      marginTop: '5px',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    >
-                      {getAvailableSemesters(selectedYear).map((semester) => (
-                        <div 
-                          key={semester}
-                          onClick={() => {
-                            setSelectedSemester(semester);
-                            setSemesterDropdownOpen(false);
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            backgroundColor: selectedSemester === semester ? '#f5f5f5' : 'transparent',
-                            transition: 'background-color 0.2s',
-                            borderBottom: '1px solid #eee',
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9f9f9';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = selectedSemester === semester ? '#f5f5f5' : 'transparent';
-                          }}
-                        >
-                          {semester}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Current Selection Display */}
-              <div style={{ 
-                marginBottom: '15px', 
-                textAlign: 'center', 
-                padding: '8px', 
-                backgroundColor: '#fff', 
-                borderRadius: '4px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}>
-                <h4 style={{ margin: '0', color: coralColor }}>
-                  {selectedYear} - {selectedSemester}
-                </h4>
-              </div>
             </div>
-            
-            {/* Course Table - Scrollable */}
-            <div style={{ 
-              backgroundColor: '#fff', 
-              padding: '10px', 
-              borderRadius: '8px', 
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              maxHeight: 'calc(100vh - 280px)',
-              overflowY: 'auto'
-            }}>
-              {currentProspectus.length > 0 ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#fff', zIndex: 2 }}>
+          )}
+          
+          {/* Extraction Results Stage */}
+          {stage === STAGES.EXTRACTION && (
+            <div className="prospectus-container">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0 }}>Extracted Courses</h3>
+                {/* Toggle Prospectus Button */}
+                <button 
+                  onClick={() => setShowProspectus(!showProspectus)} 
+                  className={`view-mode-button ${showProspectus ? '' : 'active'}`}
+                  aria-label={showProspectus ? "Hide prospectus" : "Show prospectus"}
+                >
+                  {showProspectus ? '🔍 Hide Prospectus' : '🔍 Show Prospectus'}
+                </button>
+              </div>
+              
+              <div className="student-info">
+                <p><strong>Name:</strong> {studentName}</p>
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Program:</strong> {program}</p>
+              </div>
+              
+              <div className="semester-block">
+                <table className="subjects-table">
+                  <thead>
                     <tr>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Code</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Title</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Units</th>
+                      <th>Course Number</th>
+                      <th>Course Title</th>
+                      <th>Description</th>
+                      <th style={{ textAlign: 'center' }}>Credits</th>
+                      <th style={{ textAlign: 'center' }}>GPA</th>
+                      <th>Remarks</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentProspectus.map((subject, index) => (
-                      <tr key={index} style={{ backgroundColor: index % 2 === 0 ? '#f8f8f8' : 'white' }}>
-                        <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>{subject.code}</td>
-                        <td style={{ padding: '8px', borderBottom: '1px solid #ddd' }}>
-                          <div>{subject.title}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#666' }}>{subject.description}</div>
+                    {extractedCourses.map((course, idx) => (
+                      <tr key={course.number}>
+                        <td>{course.number}</td>
+                        <td>{course.title}</td>
+                        <td>{course.description}</td>
+                        <td style={{ textAlign: 'center' }}>{course.credits}</td>
+                        <td style={{ textAlign: 'center' }}>{course.gpa}</td>
+                        <td>
+                          <input
+                            type="text"
+                            value={remarks[course.number] || ""}
+                            onChange={(e) => handleRemarkChange(course.number, e.target.value)}
+                            placeholder="Add remarks"
+                            className="filter-input"
+                            aria-label={`Remarks for ${course.title}`}
+                          />
                         </td>
-                        <td style={{ padding: '8px', borderBottom: '1px solid #ddd', textAlign: 'center' }}>{subject.units}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                  No courses available for this semester
+              </div>
+              
+              <div className="summary-section">
+                <h4>Evaluation Summary</h4>
+                <div className="summary-stats">
+                  <div className="stat-box">
+                    <span className="stat-label">Total Courses</span>
+                    <span className="stat-value">{extractedCourses.length}</span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Total Credits</span>
+                    <span className="stat-value">
+                      {extractedCourses.reduce((sum, course) => sum + course.credits, 0)}
+                    </span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Average GPA</span>
+                    <span className="stat-value">
+                      {(extractedCourses.reduce((sum, course) => sum + course.gpa, 0) / extractedCourses.length).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
+              
+              <div className="action-buttons">
+                <button 
+                  onClick={() => setStage(STAGES.UPLOAD)}
+                  className="action-button reset"
+                  aria-label="Go back to upload"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={() => setStage(STAGES.RESULTS)}
+                  className="action-button save"
+                  aria-label="Proceed to evaluation results"
+                >
+                  Save Evaluation
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Prospectus Sidebar - Only shown when needed */}
+      {showProspectus && (
+        <div className="prospectus-sidebar">
+          <div className="prospectus-header">
+            <h3>{program} Prospectus</h3>
+            <button 
+              onClick={() => setShowProspectus(false)} 
+              className="close-button"
+              aria-label="Close prospectus"
+            >
+              ×
+            </button>
+          </div>
+          
+          {/* Year and Semester Dropdowns */}
+          <div className="filter-row">
+            {/* Year Dropdown */}
+            <div className="filter-group">
+              <label>Academic Year</label>
+              <div className="custom-dropdown">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setYearDropdownOpen(!yearDropdownOpen);
+                    setSemesterDropdownOpen(false);
+                  }}
+                  className="filter-select dropdown-toggle"
+                  aria-haspopup="true"
+                  aria-expanded={yearDropdownOpen}
+                >
+                  {selectedYear} <span className="dropdown-arrow">▼</span>
+                </button>
+                
+                {yearDropdownOpen && (
+                  <div className="dropdown-menu">
+                    {Object.keys().map((year) => (
+                      <div 
+                        key={year}
+                        onClick={() => {
+                          setSelectedYear(year);
+                          setYearDropdownOpen(false);
+                          // Set semester to first available one
+                          const semesters = getAvailableSemesters(year);
+                          if (semesters.length > 0) {
+                            setSelectedSemester(semesters[0]);
+                          }
+                        }}
+                        className="dropdown-item"
+                      >
+                        {year}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Semester Dropdown */}
+            <div className="filter-group">
+              <label>Semester</label>
+              <div className="custom-dropdown">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSemesterDropdownOpen(!semesterDropdownOpen);
+                    setYearDropdownOpen(false);
+                  }}
+                  className="filter-select dropdown-toggle"
+                  aria-haspopup="true"
+                  aria-expanded={semesterDropdownOpen}
+                >
+                  {selectedSemester} <span className="dropdown-arrow">▼</span>
+                </button>
+                
+                {semesterDropdownOpen && (
+                  <div className="dropdown-menu">
+                    {getAvailableSemesters(selectedYear).map((semester) => (
+                      <div 
+                        key={semester}
+                        onClick={() => {
+                          setSelectedSemester(semester);
+                          setSemesterDropdownOpen(false);
+                        }}
+                        className="dropdown-item"
+                      >
+                        {semester}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
-      </div>
+          
+          {/* Current Selection Display */}
+          <div className="current-selection">
+            <h4>{selectedYear} - {selectedSemester}</h4>
+          </div>
+          
+          {/* Course Table - Scrollable */}
+          <div className="prospectus-content">
+          {currentProspectus.length > 0 ? (
+  <table className="subjects-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Title</th>
+        <th style={{ textAlign: 'center' }}>Units</th>
+      </tr>
+    </thead>
+    <tbody>
+      {currentProspectus.map((subject, index) => (
+        <tr key={index}>
+          <td>{subject.code}</td>
+          <td>{subject.title}</td>
+          <td style={{ textAlign: 'center' }}>{subject.units}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : (
+  <div className="no-courses-message">
+    No courses available for this semester
+  </div>
+)}
+          </div>
+        </div>
+      )}
+      
+      {/* Styles */}
+      <style>{`
+        .sidebar {
+          background-color: white;
+          color: black;
+          width: 250px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          height: 100vh;
+          position: sticky;
+          top: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .sidebar-content {
+          padding: 20px;
+          flex-grow: 1;
+        }
+        .sidebar-header {
+          margin-bottom: 20px;
+        }
+        .sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          margin-bottom: 5px;
+          transition: background-color 0.3s;
+        }
+        .sidebar-item:hover {
+          background-color: #f0f0f0;
+        }
+        .sidebar-item.active {
+          background-color: #f0f0f0;
+          font-weight: bold;
+        }
+        .logout-container {
+          padding: 20px;
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+        .logout-button {
+          background-color: ${coralColor};
+          color: white;
+          padding: 10px 20px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: bold;
+          width: 100%;
+          transition: opacity 0.3s;
+        }
+        .logout-button:hover {
+          opacity: 0.9;
+        }
+        .main-content {
+          flex: 1;
+          padding: 20px;
+          overflow-y: auto;
+        }
+        .filter-container {
+          background-color: #f9f9f9;
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filter-row {
+          display: flex;
+          gap: 20px;
+          margin-bottom: 15px;
+        }
+        .filter-row:last-child {
+          margin-bottom: 0;
+        }
+        .filter-group {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .filter-group label {
+          margin-bottom: 5px;
+          font-weight: bold;
+          font-size: 0.9rem;
+        }
+        .filter-select, .filter-input {
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 0.9rem;
+        }
+        .filter-select:focus, .filter-input:focus {
+          outline: none;
+          border-color: ${coralColor};
+        }
+        .view-mode-button {
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          background-color: #8e8e93;
+          color: white;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: bold;
+        }
+        .view-mode-button.active {
+          background-color: ${coralColor};
+          color: white;
+          border-color: ${coralColor};
+        }
+        .prospectus-container {
+          background-color: white;
+          border-radius: 8px;
+          padding: 15px;
+          margin-top: 15px;
+        }
+        .prospectus-sidebar {
+          width: 400px;
+          padding: 20px;
+          background-color: white;
+          border-left: 1px solid #ddd;
+          height: 100vh;
+          position: sticky;
+          top: 0;
+          overflow-y: auto;
+          box-sizing: border-box;
+          transition: all 0.3s ease;
+          box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+        }
+        .prospectus-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+          position: sticky;
+          top: 0;
+          background-color: white;
+          padding-bottom: 10px;
+          z-index: 5;
+        }
+        .prospectus-header h3 {
+          margin: 0;
+          color: #333;
+        }
+        .close-button {
+          background-color: transparent;
+          color: #666;
+          border: none;
+          cursor: pointer;
+          font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          transition: background-color 0.2s;
+        }
+        .close-button:hover {
+          background-color: #f0f0f0;
+        }
+        .custom-dropdown {
+          position: relative;
+        }
+        .dropdown-toggle {
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .dropdown-arrow {
+          margin-left: 5px;
+          font-size: 0.8rem;
+        }
+        .dropdown-menu {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          width: 100%;
+          background-color: #fff;
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          z-index: 10;
+          margin-top: 5px;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+        .dropdown-item {
+          padding: 8px 12px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        .dropdown-item:hover {
+          background-color: #f5f5f5;
+        }
+        .current-selection {
+          margin-bottom: 15px;
+          text-align: center;
+          padding: 8px;
+          background-color: #f0f0f0;
+          border-radius: 4px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .current-selection h4 {
+          margin: 0;
+          color: ${coralColor};
+        }
+        .prospectus-content {
+          max-height: calc(100vh - 280px);
+          overflow-y: auto;
+        }
+        .subjects-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 15px;
+        }
+        .subjects-table th, .subjects-table td {
+          padding: 12px 15px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        .subjects-table th {
+          background-color: #f9f9f9;
+          font-weight: bold;
+        }
+        .course-description {
+          font-size: 0.8rem;
+          color: #666;
+        }
+        .no-courses-message {
+          text-align: center;
+          padding: 20px;
+          color: #666;
+        }
+        .student-info {
+          margin-bottom: 15px;
+          padding: 10px;
+          background-color: #f5f5f5;
+          border-radius: 4px;
+        }
+        .student-info p {
+          margin: 5px 0;
+        }
+        .summary-section {
+          background-color: #f9f9f9;
+          padding: 15px;
+          border-radius: 8px;
+          margin-top: 20px;
+        }
+        .summary-section h4 {
+          margin-top: 0;
+          margin-bottom: 15px;
+        }
+        .summary-stats {
+          display: flex;
+          gap: 15px;
+          flex-wrap: wrap;
+        }
+        .stat-box {
+          background-color: white;
+          padding: 15px;
+          border-radius: 6px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          flex: 1;
+          min-width: 150px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .stat-label {
+          font-size: 0.9rem;
+          color: #666;
+          margin-bottom: 5px;
+        }
+        .stat-value {
+          font-size: 1.5rem;
+          font-weight: bold;
+        }
+        .action-buttons {
+          display: flex;
+          gap: 15px;
+          margin-top: 30px;
+          justify-content: flex-end;
+        }
+        .action-button {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: bold;
+          transition: opacity 0.3s;
+        }
+        .action-button:hover {
+          opacity: 0.9;
+        }
+        .action-button.save {
+          background-color: ${coralColor};
+          color: white;
+        }
+        .action-button.reset {
+          background-color: #9e9e9e;
+          color: white;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 1024px) {
+          .filter-row {
+            flex-direction: column;
+            gap: 10px;
+          }
+          
+          .summary-stats {
+            flex-direction: column;
+          }
+          
+          .action-buttons {
+            flex-direction: column;
+            align-items: stretch;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          .sidebar {
+            width: 200px;
+          }
+          
+          .main-content {
+            padding: 15px;
+          }
+          
+          .subjects-table th, .subjects-table td {
+            padding: 8px 10px;
+            font-size: 0.85rem;
+          }
+          
+          .prospectus-sidebar {
+            width: 300px;
+          }
+        }
+        
+        /* Accessibility enhancements */
+        .filter-select:focus, 
+        .filter-input:focus,
+        .view-mode-button:focus,
+        .action-button:focus,
+        .close-button:focus {
+          outline: 2px solid ${coralColor};
+          outline-offset: 2px;
+        }
+        
+        /* Additional responsive adjustments */
+        @media (max-width: 576px) {
+          .sidebar {
+            width: 60px;
+            overflow: hidden;
+          }
+          
+          .sidebar-item {
+            justify-content: center;
+            padding: 15px 0;
+          }
+          
+          .sidebar-item span {
+            display: none;
+          }
+          
+          .sidebar-header {
+            display: none;
+          }
+          
+          .main-content {
+            padding: 10px;
+          }
+          
+          .subjects-table {
+            font-size: 0.8rem;
+          }
+          
+          .subjects-table th, .subjects-table td {
+            padding: 6px 8px;
+          }
+          
+          .action-button {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+          }
+          
+          .prospectus-sidebar {
+            width: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 1000;
+          }
+        }
+      `}</style>
     </div>
   );
 }
