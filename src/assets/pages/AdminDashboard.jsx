@@ -86,7 +86,7 @@ const AdminDashboard = () => {
         <div className="sidebar-content">
           <div className="sidebar-header">
             <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-              Welcome, {currentUser?.displayName || 'Administrator'}
+              Welcome, Administrator
             </h1>
           </div>
           <div className="sidebar-item active" onClick={() => navigate('/admin-dashboard')}>
