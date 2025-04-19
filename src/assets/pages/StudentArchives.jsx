@@ -836,66 +836,122 @@ const handlePassedChange = async (index, passed) => {
                 
                 {/* Action Buttons */}
                 <div className="action-buttons">
-                <button 
-  className="action-button reset" 
-  onClick={async () => {
-    if (confirm("Are you sure you want to reset all subjects to 'Not Passed'?")) {
-      try {
-        setLoading(true);
-        const batch = writeBatch(db);
-        let batchCount = 0;
 
-        // Update all subjects in Firestore
-        for (const subject of subjects) {
-          // Map semester number to name
-          let semesterName;
-          if (subject.semester === 1) semesterName = 'FirstSem';
-          else if (subject.semester === 2) semesterName = 'SecondSem';
-          else if (subject.semester === 3) semesterName = 'Summer';
-          
-          const subjectRef = doc(
-            db, 
-            'Students', 
-            selectedStudent.docId, 
-            'Prospectus', 
-            selectedStudent.course,
-            `Year${subject.year}`, 
-            semesterName,
-            'Subjects',
-            subject.code
-          );
-          
-          batch.update(subjectRef, { Passed: false });
-          batchCount++;
-          
-          // Firestore batches are limited to 500 operations
-          if (batchCount >= 450) {
-            await batch.commit();
-            batchCount = 0;
-          }
-        }
-        
-        // Commit any remaining operations
-        if (batchCount > 0) {
-          await batch.commit();
-        }
-        
-        // Update local state
-        const resetSubjects = subjects.map(s => ({...s, passed: false}));
-        setSubjects(resetSubjects);
-        
-        alert("All subjects have been reset.");
-      } catch (err) {
-        console.error("Error resetting subjects:", err);
-        alert("Failed to reset subjects. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  }}
->
-  Reset Status
-</button>
+                <button 
+                  className="action-button save" 
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      const batch = writeBatch(db);
+                      let batchCount = 0;
+
+                      // Save all subjects to Firestore
+                      for (const subject of subjects) {
+                        // Map semester number to name
+                        let semesterName;
+                        if (subject.semester === 1) semesterName = 'FirstSem';
+                        else if (subject.semester === 2) semesterName = 'SecondSem';
+                        else if (subject.semester === 3) semesterName = 'Summer';
+                        
+                        const subjectRef = doc(
+                          db, 
+                          'Students', 
+                          selectedStudent.docId, 
+                          'Prospectus', 
+                          selectedStudent.course,
+                          `Year${subject.year}`, 
+                          semesterName,
+                          'Subjects',
+                          subject.code
+                        );
+                        
+                        batch.update(subjectRef, { Passed: subject.passed });
+                        batchCount++;
+                        
+                        // Firestore batches are limited to 500 operations
+                        if (batchCount >= 450) {
+                          await batch.commit();
+                          batchCount = 0;
+                        }
+                      }
+                      
+                      // Commit any remaining operations
+                      if (batchCount > 0) {
+                        await batch.commit();
+                      }
+                      
+                      alert("Changes saved successfully.");
+                    } catch (err) {
+                      console.error("Error saving changes:", err);
+                      alert("Failed to save changes. Please try again.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Save Changes
+                </button>
+
+                <button 
+                      className="action-button reset" 
+                      onClick={async () => {
+                        if (confirm("Are you sure you want to reset all subjects to 'Not Passed'?")) {
+                          try {
+                            setLoading(true);
+                            const batch = writeBatch(db);
+                            let batchCount = 0;
+
+                            // Update all subjects in Firestore
+                            for (const subject of subjects) {
+                              // Map semester number to name
+                              let semesterName;
+                              if (subject.semester === 1) semesterName = 'FirstSem';
+                              else if (subject.semester === 2) semesterName = 'SecondSem';
+                              else if (subject.semester === 3) semesterName = 'Summer';
+                              
+                              const subjectRef = doc(
+                                db, 
+                                'Students', 
+                                selectedStudent.docId, 
+                                'Prospectus', 
+                                selectedStudent.course,
+                                `Year${subject.year}`, 
+                                semesterName,
+                                'Subjects',
+                                subject.code
+                              );
+                              
+                              batch.update(subjectRef, { Passed: false });
+                              batchCount++;
+                              
+                              // Firestore batches are limited to 500 operations
+                              if (batchCount >= 450) {
+                                await batch.commit();
+                                batchCount = 0;
+                              }
+                            }
+                            
+                            // Commit any remaining operations
+                            if (batchCount > 0) {
+                              await batch.commit();
+                            }
+                            
+                            // Update local state
+                            const resetSubjects = subjects.map(s => ({...s, passed: false}));
+                            setSubjects(resetSubjects);
+                            
+                            alert("All subjects have been reset.");
+                          } catch (err) {
+                            console.error("Error resetting subjects:", err);
+                            alert("Failed to reset subjects. Please try again.");
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }}
+                    >
+                      Reset Status
+                    </button>
                   
                   <button 
                     className="action-button print"
