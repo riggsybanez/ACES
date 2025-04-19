@@ -8,6 +8,8 @@ const LogoutButton = () => {
   const { logout } = useAuth();
   
   const handleLogout = () => {
+    // Clear session storage before logout
+    sessionStorage.removeItem('evaluationData');
     logout();
     navigate('/login');
   };
