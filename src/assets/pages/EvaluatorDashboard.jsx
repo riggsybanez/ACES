@@ -2,55 +2,104 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import LogoutButton from '../../components/LogoutButton';
-
+import { db } from '../../firebase/authService';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const EvaluatorDashboard = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const coralColor = 'rgba(255,79,78, 255)';
   
-  // Sample data for the dashboard
+  // Dashboard stats
   const [dashboardStats, setDashboardStats] = useState({
-    totalPending: 42,
-    totalCompleted: 128,
-    recentEvaluations: 18,
+    totalCompleted: 0,
     programStats: {
-      'BSCS': { total: 18, pending: 7, completed: 11 },
-      'BSIT': { total: 34, pending: 21, completed: 13 },
-      'BSIS': { total: 14, pending: 14, completed: 0 }
+      'BSCS': { completed: 0 },
+      'BSIT': { completed: 0 },
+      'BSIS': { completed: 0 }
     }
   });
   
-  // Sample pending evaluations data
-  const [pendingEvaluations, setPendingEvaluations] = useState([
-    { id: 'S-2023-001', name: 'Maria Santos', course: 'BSCS', yearLevel: 2, type: 'Regular', requestDate: '2023-09-15' },
-    { id: 'S-2023-012', name: 'Juan Cruz', course: 'BSIT', yearLevel: 3, type: 'Irregular', requestDate: '2023-09-16' },
-    { id: 'S-2023-018', name: 'Ana Reyes', course: 'BSIS', yearLevel: 1, type: 'Regular', requestDate: '2023-09-17' },
-    { id: 'S-2023-024', name: 'Pedro Lim', course: 'BSCS', yearLevel: 4, type: 'Irregular', requestDate: '2023-09-18' },
-    { id: 'S-2023-031', name: 'Sofia Garcia', course: 'BSIT', yearLevel: 2, type: 'Regular', requestDate: '2023-09-19' }
-  ]);
+  // Recent evaluations
+  const [recentEvaluations, setRecentEvaluations] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-  // Filter state for pending evaluations
-  const [courseFilter, setCourseFilter] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Get filtered evaluations based on course and search term
-  const getFilteredEvaluations = () => {
-    return pendingEvaluations.filter(evaluation => {
-      const matchesCourse = courseFilter ? evaluation.course === courseFilter : true;
-      const matchesSearch = searchTerm ? 
-        evaluation.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        evaluation.id.toLowerCase().includes(searchTerm.toLowerCase()) : 
-        true;
-      return matchesCourse && matchesSearch;
-    });
-  };
-  
-  // Handle evaluation action
-  const handleEvaluate = (studentId) => {
-    // In a real app, this would navigate to the evaluation page with the student ID
-    navigate(`/course-evaluation?studentId=${studentId}`);
-  };
+  // Fetch stats and recent evaluations from Firestore
+  useEffect(() => {
+    const fetchEvaluationData = async () => {
+      if (!currentUser || !currentUser.displayName) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // Get evaluations by this evaluator from Firestore
+        const evaluationsRef = collection(db, "EvaluationHistory");
+        const evaluatorQuery = query(
+          evaluationsRef, 
+          where("EvaluatorName", "==", currentUser.displayName)
+        );
+        const evaluationsSnapshot = await getDocs(evaluatorQuery);
+        
+        if (!evaluationsSnapshot.empty) {
+          const evaluations = evaluationsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            // Convert timestamp to date
+            EvaluationDate: doc.data().EvaluationDate?.toDate() || new Date()
+          }));
+          
+          // Sort by date (newest first)
+          evaluations.sort((a, b) => b.EvaluationDate - a.EvaluationDate);
+          
+          // Get program stats
+          const programCounts = {
+            'BSCS': 0,
+            'BSIT': 0,
+            'BSIS': 0
+          };
+          
+          evaluations.forEach(evaluation => {
+            if (programCounts.hasOwnProperty(evaluation.Course)) {
+              programCounts[evaluation.Course]++;
+            }
+          });
+          
+          // Update dashboard stats
+          setDashboardStats({
+            totalCompleted: evaluations.length,
+            programStats: {
+              'BSCS': { completed: programCounts['BSCS'] },
+              'BSIT': { completed: programCounts['BSIT'] },
+              'BSIS': { completed: programCounts['BSIS'] }
+            }
+          });
+          
+          // Set recent evaluations (limited to 5)
+          setRecentEvaluations(evaluations.slice(0, 5));
+        } else {
+          // No evaluations found for this evaluator
+          setDashboardStats({
+            totalCompleted: 0,
+            programStats: {
+              'BSCS': { completed: 0 },
+              'BSIT': { completed: 0 },
+              'BSIS': { completed: 0 }
+            }
+          });
+          setRecentEvaluations([]);
+        }
+      } catch (error) {
+        console.error("Error fetching evaluation data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEvaluationData();
+  }, [currentUser]);
   
   // Get course name from code
   const getCourseFullName = (code) => {
@@ -67,6 +116,14 @@ const EvaluatorDashboard = () => {
     const today = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return today.toLocaleDateString('en-US', options);
+  };
+  
+  // Format date for display
+  const formatDate = (date) => {
+    if (!date) return 'N/A';
+    return date instanceof Date 
+      ? date.toLocaleDateString() 
+      : new Date(date).toLocaleDateString();
   };
   
   return (
@@ -97,11 +154,11 @@ const EvaluatorDashboard = () => {
           </div>
           <div className="welcome-message">
             <h3>Welcome back, {currentUser?.displayName}!</h3>
-            <p>You have <span className="highlight-text">{dashboardStats.totalPending}</span> pending evaluations</p>
+            <p>You have completed <span className="highlight-text">{dashboardStats.totalCompleted}</span> evaluations</p>
           </div>
         </div>
         
-        {/* Quick Actions - Moved above Stats Overview */}
+        {/* Quick Actions */}
         <div className="quick-actions-container">
           <h3>Quick Actions</h3>
           <div className="quick-action-buttons">
@@ -133,37 +190,19 @@ const EvaluatorDashboard = () => {
         
         {/* Stats Overview */}
         <div className="stats-overview">
-          <div className="stat-card total-pending">
-            <div className="stat-icon">📊</div>
-            <div className="stat-content">
-              <h4>Pending Evaluations</h4>
-              <p className="stat-number">{dashboardStats.totalPending}</p>
-              <p className="stat-description">Awaiting your review</p>
-            </div>
-          </div>
-          
           <div className="stat-card total-completed">
             <div className="stat-icon">✅</div>
             <div className="stat-content">
-              <h4>Completed</h4>
+              <h4>Your Completed Evaluations</h4>
               <p className="stat-number">{dashboardStats.totalCompleted}</p>
-              <p className="stat-description">Successfully evaluated</p>
-            </div>
-          </div>
-          
-          <div className="stat-card recent">
-            <div className="stat-icon">🔄</div>
-            <div className="stat-content">
-              <h4>Recent Activity</h4>
-              <p className="stat-number">{dashboardStats.recentEvaluations}</p>
-              <p className="stat-description">In the last 7 days</p>
+              <p className="stat-description">Successfully evaluated by you</p>
             </div>
           </div>
         </div>
         
         {/* Program Stats - Simplified */}
         <div className="program-stats-container">
-          <h3>Program Statistics</h3>
+          <h3>Your Program Statistics</h3>
           <div className="simplified-program-stats">
             {Object.entries(dashboardStats.programStats).map(([program, stats]) => (
               <div key={program} className={`stat-card program-stat-card ${program.toLowerCase()}`}>
@@ -172,14 +211,6 @@ const EvaluatorDashboard = () => {
                   <div className="program-code">{program}</div>
                 </div>
                 <div className="program-stat-numbers">
-                  <div className="program-stat-item">
-                    <span className="stat-number">{stats.total}</span>
-                    <span className="stat-label">Total</span>
-                  </div>
-                  <div className="program-stat-item">
-                    <span className="stat-number highlight-pending">{stats.pending}</span>
-                    <span className="stat-label">Pending</span>
-                  </div>
                   <div className="program-stat-item">
                     <span className="stat-number highlight-completed">{stats.completed}</span>
                     <span className="stat-label">Completed</span>
@@ -190,87 +221,56 @@ const EvaluatorDashboard = () => {
           </div>
         </div>
         
-        {/* Pending Evaluations */}
-        <div className="pending-evaluations-container">
-          <div className="pending-header">
-            <h3>Pending Evaluations</h3>
-            <div className="pending-controls">
-              <div className="search-container">
-                <input 
-                  type="text" 
-                  placeholder="Search by name or ID" 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
-                <span className="search-icon">🔍</span>
-              </div>
-              
-              <div className="filter-container">
-                <select 
-                  value={courseFilter} 
-                  onChange={(e) => setCourseFilter(e.target.value)}
-                  className="course-filter"
-                >
-                  <option value="">All Programs</option>
-                  <option value="BSCS">BS Computer Science</option>
-                  <option value="BSIT">BS Information Technology</option>
-                  <option value="BSIS">BS Information Systems</option>
-                </select>
-              </div>
-            </div>
+        {/* Recent Evaluations */}
+        <div className="recent-evaluations-container">
+          <div className="recent-header">
+            <h3>Your Recent Evaluations</h3>
           </div>
           
           <div className="evaluations-table-container">
-            <table className="evaluations-table">
-              <thead>
-                <tr>
-                  <th>Student ID</th>
-                  <th>Name</th>
-                  <th>Program</th>
-                  <th>Year Level</th>
-                  <th>Type</th>
-                  <th>Request Date</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredEvaluations().length > 0 ? (
-                  getFilteredEvaluations().map((evaluation) => (
+            {loading ? (
+              <div className="loading-message">Loading your recent evaluations...</div>
+            ) : recentEvaluations.length > 0 ? (
+              <table className="evaluations-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Email</th>
+                    <th>Program</th>
+                    <th>Year Level</th>
+                    <th>Evaluation Date</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentEvaluations.map((evaluation) => (
                     <tr key={evaluation.id}>
-                      <td>{evaluation.id}</td>
-                      <td>{evaluation.name}</td>
-                      <td>{evaluation.course}</td>
-                      <td>Year {evaluation.yearLevel}</td>
-                      <td>{evaluation.type}</td>
-                      <td>{evaluation.requestDate}</td>
+                      <td>{evaluation.StudentName || 'N/A'}</td>
+                      <td>{evaluation.Email || 'N/A'}</td>
+                      <td>{evaluation.Course || 'N/A'}</td>
+                      <td>Year {evaluation.YearLevel || 'N/A'}</td>
+                      <td>{formatDate(evaluation.EvaluationDate)}</td>
                       <td>
                         <button 
-                          className="evaluate-button"
-                          onClick={() => handleEvaluate(evaluation.id)}
+                          className="view-button"
+                          onClick={() => navigate(`/student-archives?email=${encodeURIComponent(evaluation.Email)}&fromEvaluation=true`)}
                         >
-                          Evaluate
+                          View Details
                         </button>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="no-data">
-                      {courseFilter || searchTerm ? 
-                        "No evaluations match your filter criteria." : 
-                        "No pending evaluations at this time."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="no-data">You haven't completed any evaluations yet.</div>
+            )}
           </div>
           
           <div className="view-all-container">
             <button 
               className="view-all-button"
-              onClick={() => navigate('/course-evaluation')}
+              onClick={() => navigate('/history')}
             >
               View All Evaluations
             </button>
@@ -278,7 +278,7 @@ const EvaluatorDashboard = () => {
         </div>
       </div>
 
-      {/* Inline Styles */}
+      {/* Inline Styles - unchanged */}
       <style>{`
         .sidebar {
           background-color: white;
@@ -408,9 +408,8 @@ const EvaluatorDashboard = () => {
         
         /* Stats Overview */
         .stats-overview {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
+          display: flex;
+          justify-content: center;
           margin-bottom: 30px;
         }
         .stat-card {
@@ -421,6 +420,7 @@ const EvaluatorDashboard = () => {
           align-items: center;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           transition: transform 0.3s ease, box-shadow 0.3s ease;
+          max-width: 500px;
         }
         .stat-card:hover {
           transform: translateY(-5px);
@@ -433,14 +433,8 @@ const EvaluatorDashboard = () => {
           border-radius: 10px;
           background-color: #f0f0f0;
         }
-        .total-pending .stat-icon {
-          background-color: rgba(255,79,78, 0.1);
-        }
         .total-completed .stat-icon {
           background-color: rgba(76, 175, 80, 0.1);
-        }
-        .recent .stat-icon {
-          background-color: rgba(33, 150, 243, 0.1);
         }
         .stat-content {
           flex: 1;
@@ -506,7 +500,7 @@ const EvaluatorDashboard = () => {
         }
         .program-stat-numbers {
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
         }
         .program-stat-item {
           display: flex;
@@ -521,52 +515,23 @@ const EvaluatorDashboard = () => {
           font-size: 0.8rem;
           color: #666;
         }
-        .highlight-pending {
-          color: ${coralColor};
-        }
         .highlight-completed {
           color: #4caf50;
         }
         
-        /* Pending Evaluations */
-        .pending-evaluations-container {
+        /* Recent Evaluations */
+        .recent-evaluations-container {
           background: white;
           border-radius: 10px;
           padding: 20px;
           margin-bottom: 30px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        .pending-header {
+        .recent-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 20px;
-        }
-        .pending-controls {
-          display: flex;
-          gap: 15px;
-        }
-        .search-container {
-          position: relative;
-        }
-        .search-input {
-          padding: 10px 15px 10px 35px;
-          border-radius: 5px;
-          border: 1px solid #ddd;
-          width: 250px;
-        }
-        .search-icon {
-          position: absolute;
-          left: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #777;
-        }
-        .course-filter {
-          padding: 10px 15px;
-          border-radius: 5px;
-          border: 1px solid #ddd;
-          background-color: white;
         }
         .evaluations-table-container {
           overflow-x: auto;
@@ -589,7 +554,7 @@ const EvaluatorDashboard = () => {
         .evaluations-table tr:hover {
           background-color: #f5f5f5;
         }
-        .evaluate-button {
+        .view-button {
           background-color: ${coralColor};
           color: white;
           border: none;
@@ -599,12 +564,17 @@ const EvaluatorDashboard = () => {
           font-weight: bold;
           transition: opacity 0.3s;
         }
-        .evaluate-button:hover {
+        .view-button:hover {
           opacity: 0.9;
         }
         .no-data {
           text-align: center;
           padding: 30px !important;
+          color: #777;
+        }
+        .loading-message {
+          text-align: center;
+          padding: 30px;
           color: #777;
         }
         .view-all-container {
@@ -628,7 +598,7 @@ const EvaluatorDashboard = () => {
         
         /* Responsive styles */
         @media (max-width: 1200px) {
-          .stats-overview, .simplified-program-stats {
+          .simplified-program-stats {
             grid-template-columns: repeat(2, 1fr);
           }
           .quick-action-buttons {
@@ -649,16 +619,9 @@ const EvaluatorDashboard = () => {
             text-align: left;
             margin-top: 15px;
           }
-          .pending-header {
+          .recent-header {
             flex-direction: column;
             align-items: flex-start;
-          }
-          .pending-controls {
-            margin-top: 15px;
-            width: 100%;
-          }
-          .search-input {
-            width: 100%;
           }
         }
         
@@ -666,15 +629,8 @@ const EvaluatorDashboard = () => {
           .sidebar {
             width: 200px;
           }
-          .stats-overview, .simplified-program-stats {
+          .simplified-program-stats {
             grid-template-columns: 1fr;
-          }
-          .pending-controls {
-            flex-direction: column;
-            gap: 10px;
-          }
-          .search-container, .course-filter {
-            width: 100%;
           }
           .quick-action-buttons {
             flex-direction: column;
@@ -714,7 +670,7 @@ const EvaluatorDashboard = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         
-        .quick-actions-container, .stats-overview, .program-stats-container, .pending-evaluations-container {
+        .quick-actions-container, .stats-overview, .program-stats-container, .recent-evaluations-container {
           animation: fadeIn 0.5s ease-out forwards;
         }
         
@@ -726,14 +682,13 @@ const EvaluatorDashboard = () => {
           animation-delay: 0.2s;
         }
         
-        .pending-evaluations-container {
+        .recent-evaluations-container {
           animation-delay: 0.3s;
         }
         
         /* Accessibility enhancements */
         .search-input:focus, 
-        .course-filter:focus,
-        .evaluate-button:focus,
+        .view-button:focus,
         .view-all-button:focus,
         .quick-action-button:focus {
           outline: 2px solid ${coralColor};

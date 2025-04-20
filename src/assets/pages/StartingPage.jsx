@@ -19,7 +19,7 @@ const StartingPage = () => {
           background-position: center; /* Center the image */
         }
 
-        .button-container {
+        .button-containers {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
@@ -68,7 +68,7 @@ const StartingPage = () => {
 
       <div className="home-container">
         <img src="uiclogo.png" alt="University Logo" className="logo" /> {/* Add your logo */}
-        <div className="button-container">
+        <div className="button-containers">
           <button onClick={() => navigate('/check-status')} className="custom-button red">
             Check Evaluation Status
           </button>
