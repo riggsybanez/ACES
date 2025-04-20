@@ -75,7 +75,7 @@ const EvaluatorDashboard = () => {
       <div className="sidebar">
         <div className="sidebar-content">
           <div className="sidebar-header">
-            <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Welcome, {currentUser?.displayName}</h1>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{currentUser?.displayName}</h1>
             <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
           </div>
           <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item active">🏠 Home</div>
@@ -84,7 +84,7 @@ const EvaluatorDashboard = () => {
           <div onClick={() => navigate('/student-archives')} className="sidebar-item">📚 Student Archives</div>
         </div>
         <div className="logout-container">
-          <button onClick={() => navigate('/login')} className="logout-button">Logout</button>
+          <LogoutButton />
         </div>
       </div>
 
@@ -96,7 +96,7 @@ const EvaluatorDashboard = () => {
             <p className="date-display">{getTodayFormatted()}</p>
           </div>
           <div className="welcome-message">
-            <h3>Welcome back, John!</h3>
+            <h3>Welcome back, {currentUser?.displayName}!</h3>
             <p>You have <span className="highlight-text">{dashboardStats.totalPending}</span> pending evaluations</p>
           </div>
         </div>

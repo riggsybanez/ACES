@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import LogoutButton from '../../components/LogoutButton';
 import { db } from '../../firebase/authService';
@@ -46,6 +47,11 @@ const StudentArchives = () => {
   
   // Sample subject structure (this would be populated dynamically based on course selection)
   const [subjects, setSubjects] = useState([]);
+
+const location = useLocation();
+const queryParams = new URLSearchParams(location.search);
+const emailFromEvaluation = queryParams.get('email');
+const fromEvaluation = queryParams.get('fromEvaluation') === 'true';
   
   // Fetch students from Firestore
   useEffect(() => {
@@ -66,6 +72,20 @@ const StudentArchives = () => {
         
         setStudents(studentsList);
         
+        // If we're coming from the evaluation history page, find and select the student
+        if (emailFromEvaluation && fromEvaluation) {
+          const matchingStudent = studentsList.find(student => 
+            student.email.toLowerCase() === emailFromEvaluation.toLowerCase()
+          );
+          
+          if (matchingStudent) {
+            // Automatically view this student's prospectus
+            viewStudentProspectus(matchingStudent);
+          } else {
+            console.warn(`No student found with email: ${emailFromEvaluation}`);
+          }
+        }
+        
         // Fetch available programs
         const programsCollection = collection(db, 'Program');
         const programsSnapshot = await getDocs(programsCollection);
@@ -79,9 +99,9 @@ const StudentArchives = () => {
         setLoading(false);
       }
     };
-
+  
     fetchStudents();
-  }, []);
+  }, [emailFromEvaluation, fromEvaluation]); // Add dependencies
   
   // Function to view a student's prospectus
 // Function to view a student's prospectus
@@ -953,14 +973,7 @@ const handlePassedChange = async (index, passed) => {
                       Reset Status
                     </button>
                   
-                  <button 
-                    className="action-button print"
-                    onClick={() => {
-                      window.print();
-                    }}
-                  >
-                    Print Prospectus
-                  </button>
+
                 </div>
               </div>
             )}
@@ -1062,7 +1075,7 @@ const handlePassedChange = async (index, passed) => {
         /* Students Section */
         .students-section {
           flex: 1;
-          max-width: 600px;
+          max-width: max-content;
           background-color: white;
           border-radius: 8px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
