@@ -29,10 +29,14 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError('An error occurred. Please try again.');
+      setError('Invalid credentials. Please try again.');
     }
     
     setLoading(false);
+  };
+
+  const handleBack = () => {
+    navigate('/');
   };
 
   return (
@@ -57,9 +61,23 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
           />
-          <button type="submit" className="login-button" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+          <div className="button-container">
+            <button 
+              type="button" 
+              className="back-button" 
+              onClick={handleBack}
+              disabled={loading}
+            >
+              Back
+            </button>
+            <button 
+              type="submit" 
+              className="login-button" 
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -96,7 +114,6 @@ const styles = `
     font-weight: bold;
     margin-bottom: 1rem;
     color: black;
-
   }
 
   .input-field {
@@ -107,10 +124,29 @@ const styles = `
     border-radius: 5px;
   }
 
-  .login-button {
+  .button-container {
+    display: flex;
+    justify-content: space-between;
     width: 90%;
+    margin: 0 auto;
+  }
+
+  .login-button {
+    width: 48%;
     padding: 10px;
-    background-color:rgb(233, 97, 97);
+    background-color: rgb(233, 97, 97);
+    color: white;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  .back-button {
+    width: 48%;
+    padding: 10px;
+    background-color: #6c757d;
     color: white;
     font-weight: bold;
     border: none;
@@ -120,7 +156,11 @@ const styles = `
   }
 
   .login-button:hover {
-    background-color: #2563eb;
+    background-color: #d84545;
+  }
+
+  .back-button:hover {
+    background-color: #5a6268;
   }
 
   .error-message {
