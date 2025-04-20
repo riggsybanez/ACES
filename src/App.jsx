@@ -22,7 +22,7 @@ function App() {
         <Route path="/" element={<StartingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/check-status" element={<EmailCheck />} />
-        <Route path="/student-status" element={<StudentStatus />} />
+        <Route path="/student-status/:evaluationId" element={<StudentStatus />} />
         
         {/* Admin routes */}
         <Route element={<ProtectedRoute requiredRole="admin" />}>
