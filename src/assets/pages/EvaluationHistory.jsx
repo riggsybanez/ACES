@@ -1,72 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import LogoutButton from '../../components/LogoutButton';
+import { db } from '../../firebase/authService';
+import { collection, getDocs } from 'firebase/firestore';
 
 const EvaluationHistory = () => {
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const coralColor = 'rgba(255,79,78, 255)';
   
-  // Sample data for evaluation history
-  const [evaluations, setEvaluations] = useState([
-    {
-      id: 1,
-      studentName: "Juan Dela Cruz",
-      email: "jdelacruz@example.com",
-      course: "BS Computer Science",
-      yearLevel: 2,
-      evaluationDate: "2023-03-15",
-      subjectsCredited: 5,
-      totalSubjects: 7,
-      remarks: "Missing prerequisites for advanced programming courses"
-    },
-    {
-      id: 2,
-      studentName: "Maria Santos",
-      email: "msantos@example.com",
-      course: "BS Information Technology",
-      yearLevel: 3,
-      evaluationDate: "2023-03-10",
-      subjectsCredited: 8,
-      totalSubjects: 10,
-      remarks: "Math electives need to be validated with department chair"
-    },
-    {
-      id: 3,
-      studentName: "Antonio Reyes",
-      email: "areyes@example.com",
-      course: "BS Information Systems",
-      yearLevel: 1,
-      evaluationDate: "2023-03-05",
-      subjectsCredited: 4,
-      totalSubjects: 5,
-      remarks: "All foundation courses credited"
-    },
-    {
-      id: 4,
-      studentName: "Elena Gomez",
-      email: "egomez@example.com",
-      course: "BS Computer Science",
-      yearLevel: 4,
-      evaluationDate: "2023-02-28",
-      subjectsCredited: 11,
-      totalSubjects: 12,
-      remarks: "Needs one more technical elective"
-    },
-    {
-      id: 5,
-      studentName: "Carlos Mendoza",
-      email: "cmendoza@example.com",
-      course: "BS Information Technology",
-      yearLevel: 2,
-      evaluationDate: "2023-02-20",
-      subjectsCredited: 6,
-      totalSubjects: 8,
-      remarks: "Physics courses require additional documentation"
-    }
-  ]);
+  // State for storing evaluations from Firestore
+  const [evaluations, setEvaluations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Sorting state
-  const [sortField, setSortField] = useState('evaluationDate');
+  const [sortField, setSortField] = useState('EvaluationDate');
   const [sortDirection, setSortDirection] = useState('desc');
+
+  // Fetch evaluations from Firestore
+  useEffect(() => {
+    const fetchEvaluations = async () => {
+      try {
+        setLoading(true);
+        const evaluationsRef = collection(db, "EvaluationHistory");
+        const evaluationsSnapshot = await getDocs(evaluationsRef);
+        
+        const evaluationsData = evaluationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          // Convert Firestore timestamp to JS Date
+          EvaluationDate: doc.data().EvaluationDate?.toDate() || new Date()
+        }));
+        
+        setEvaluations(evaluationsData);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching evaluations:", err);
+        setError("Failed to load evaluation history");
+        setLoading(false);
+      }
+    };
+
+    fetchEvaluations();
+  }, []);
 
   // Sort function
   const sortEvaluations = (field) => {
@@ -81,18 +59,24 @@ const EvaluationHistory = () => {
     
     // Sort the evaluations
     const sortedEvaluations = [...evaluations].sort((a, b) => {
-      if (field === 'subjectsCredited') {
+      if (field === 'YearLevel') {
         return sortDirection === 'asc' 
           ? a[field] - b[field] 
           : b[field] - a[field];
-      } else if (field === 'yearLevel') {
+      } else if (field === 'EvaluationDate') {
+        // Handle date sorting
+        const dateA = a[field] instanceof Date ? a[field] : new Date(a[field]);
+        const dateB = b[field] instanceof Date ? b[field] : new Date(b[field]);
         return sortDirection === 'asc' 
-          ? a[field] - b[field] 
-          : b[field] - a[field];
+          ? dateA - dateB 
+          : dateB - dateA;
       } else {
+        // Handle string fields
+        const valA = a[field] || '';
+        const valB = b[field] || '';
         return sortDirection === 'asc' 
-          ? a[field].localeCompare(b[field]) 
-          : b[field].localeCompare(a[field]);
+          ? valA.toString().localeCompare(valB.toString()) 
+          : valB.toString().localeCompare(valA.toString());
       }
     });
     
@@ -100,122 +84,160 @@ const EvaluationHistory = () => {
   };
 
   // Calculate completion percentage
-  const calculateCompletion = (credited, total) => {
-    return Math.round((credited / total) * 100);
+  const calculateCompletion = (courses) => {
+    if (!courses || !Array.isArray(courses)) return { passed: 0, total: 0, percentage: 0 };
+    
+    const total = courses.length;
+    const passed = courses.filter(course => course.Passed).length;
+    const percentage = total > 0 ? Math.round((passed / total) * 100) : 0;
+    
+    return { passed, total, percentage };
   };
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
+      {/* Sidebar - unchanged */}
       <div className="sidebar">
-  <div className="sidebar-content">
-    <div className="sidebar-header">
-      <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>JOHN SMITH</h1>
-      <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
-    </div>
-    <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item">🏠 Home</div>
-    <div onClick={() => navigate('/course-evaluation')} className="sidebar-item">📅 Course Evaluation</div>
-    <div onClick={() => navigate('/history')} className="sidebar-item active">📄 Evaluation History</div>
-    <div onClick={() => navigate('/student-archives')} className="sidebar-item">📚 Student Archives</div>
-  </div>
-  <div className="logout-container">
-    <button onClick={() => navigate('/login')} className="logout-button">Logout</button>
-  </div>
-</div>
-
-      {/* Main Content */}
-      <div className="main-content">
-        <h2>Evaluation History</h2>
-        
-        {/* Sorting controls */}
-        <div className="sorting-controls">
-          <p>Sort by:</p>
-          <button 
-            className={`sort-button ${sortField === 'studentName' ? 'active' : ''}`} 
-            onClick={() => sortEvaluations('studentName')}
-          >
-            Name {sortField === 'studentName' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </button>
-          <button 
-            className={`sort-button ${sortField === 'course' ? 'active' : ''}`} 
-            onClick={() => sortEvaluations('course')}
-          >
-            Course {sortField === 'course' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </button>
-          <button 
-            className={`sort-button ${sortField === 'yearLevel' ? 'active' : ''}`} 
-            onClick={() => sortEvaluations('yearLevel')}
-          >
-            Year Level {sortField === 'yearLevel' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </button>
-          <button 
-            className={`sort-button ${sortField === 'evaluationDate' ? 'active' : ''}`} 
-            onClick={() => sortEvaluations('evaluationDate')}
-          >
-            Date {sortField === 'evaluationDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </button>
-          <button 
-            className={`sort-button ${sortField === 'subjectsCredited' ? 'active' : ''}`} 
-            onClick={() => sortEvaluations('subjectsCredited')}
-          >
-            Completion {sortField === 'subjectsCredited' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </button>
+        <div className="sidebar-content">
+          <div className="sidebar-header">
+            <h1 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{currentUser.displayName}</h1>
+            <p style={{ fontSize: '0.8rem' }}>Course Evaluator</p>
+          </div>
+          <div onClick={() => navigate('/evaluator-dashboard')} className="sidebar-item">🏠 Home</div>
+          <div onClick={() => navigate('/course-evaluation')} className="sidebar-item">📅 Course Evaluation</div>
+          <div onClick={() => navigate('/history')} className="sidebar-item active">📄 Evaluation History</div>
+          <div onClick={() => navigate('/student-archives')} className="sidebar-item">📚 Student Archives</div>
         </div>
-        
-        {/* Evaluations table */}
-        <div className="evaluations-table-container">
-          <table className="evaluations-table">
-            <thead>
-              <tr>
-                <th>Student Name</th>
-                <th>Email</th>
-                <th>Course</th>
-                <th>Year Level</th>
-                <th>Evaluation Date</th>
-                <th>Credits Progress</th>
-                <th>Remarks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {evaluations.map((evaluation) => (
-                <tr key={evaluation.id}>
-                  <td>{evaluation.studentName}</td>
-                  <td>{evaluation.email}</td>
-                  <td>{evaluation.course}</td>
-                  <td>{evaluation.yearLevel}</td>
-                  <td>{new Date(evaluation.evaluationDate).toLocaleDateString()}</td>
-                  <td>
-                    <div className="progress-container">
-                      <div 
-                        className="progress-bar" 
-                        style={{ 
-                          width: `${calculateCompletion(evaluation.subjectsCredited, evaluation.totalSubjects)}%`,
-                          backgroundColor: calculateCompletion(evaluation.subjectsCredited, evaluation.totalSubjects) > 75 ? '#4caf50' : '#ff9800'
-                        }}
-                      ></div>
-                      <span className="progress-text">
-                        {evaluation.subjectsCredited}/{evaluation.totalSubjects} subjects
-                      </span>
-                    </div>
-                  </td>
-                  <td className="remarks-cell">{evaluation.remarks}</td>
-                  <td>
-                    <button 
-                      className="view-button"
-                      onClick={() => navigate(`/evaluation-detail/${evaluation.id}`)}
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="logout-container">
+          <LogoutButton />
         </div>
       </div>
 
-      {/* Inline Styles */}
+      {/* Main Content - modified to use Firestore data */}
+      <div className="main-content">
+        <h2>Evaluation History</h2>
+        
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading evaluation history...</p>
+          </div>
+        ) : error ? (
+          <div className="error-message">
+            <p>{error}</p>
+            <button className="retry-button" onClick={() => window.location.reload()}>
+              Retry
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Sorting controls */}
+            <div className="sorting-controls">
+              <p>Sort by:</p>
+              <button 
+                className={`sort-button ${sortField === 'StudentName' ? 'active' : ''}`} 
+                onClick={() => sortEvaluations('StudentName')}
+              >
+                Name {sortField === 'StudentName' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+              <button 
+                className={`sort-button ${sortField === 'Course' ? 'active' : ''}`} 
+                onClick={() => sortEvaluations('Course')}
+              >
+                Course {sortField === 'Course' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+              <button 
+                className={`sort-button ${sortField === 'YearLevel' ? 'active' : ''}`} 
+                onClick={() => sortEvaluations('YearLevel')}
+              >
+                Year Level {sortField === 'YearLevel' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+              <button 
+                className={`sort-button ${sortField === 'EvaluationDate' ? 'active' : ''}`} 
+                onClick={() => sortEvaluations('EvaluationDate')}
+              >
+                Date {sortField === 'EvaluationDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+              <button 
+                className={`sort-button ${sortField === 'EvaluatorName' ? 'active' : ''}`} 
+                onClick={() => sortEvaluations('EvaluatorName')}
+              >
+                Evaluator {sortField === 'EvaluatorName' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+            </div>
+            
+            {/* Evaluations table */}
+            <div className="evaluations-table-container">
+              {evaluations.length === 0 ? (
+                <div className="no-data-message">
+                  <p>No evaluation records found</p>
+                </div>
+              ) : (
+                <table className="evaluations-table">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Email</th>
+                      <th>Course</th>
+                      <th>Year Level</th>
+                      <th>Evaluation Date</th>
+                      <th>Evaluator</th>
+                      <th>Credits Progress</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {evaluations.map((evaluation) => {
+                      const progress = calculateCompletion(evaluation.Courses);
+                      return (
+                        <tr key={evaluation.id}>
+                          <td>{evaluation.StudentName || 'N/A'}</td>
+                          <td>{evaluation.Email || 'N/A'}</td>
+                          <td>{evaluation.Course || 'N/A'}</td>
+                          <td>{evaluation.YearLevel || 'N/A'}</td>
+                          <td>
+                            {evaluation.EvaluationDate instanceof Date 
+                              ? evaluation.EvaluationDate.toLocaleDateString() 
+                              : 'N/A'}
+                          </td>
+                          <td>{evaluation.EvaluatorName || 'N/A'}</td>
+                          <td>
+                            <div className="progress-container">
+                              <div 
+                                className="progress-bar" 
+                                style={{ 
+                                  width: `${progress.percentage}%`,
+                                  backgroundColor: progress.percentage > 75 ? '#4caf50' : '#ff9800'
+                                }}
+                              ></div>
+                              <span className="progress-text">
+                                {progress.passed}/{progress.total} courses
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <button 
+                              className="view-button"
+                              onClick={() => {
+                                // Navigate to StudentArchives with the student's email as a query parameter
+                                navigate(`/student-archives?email=${encodeURIComponent(evaluation.Email)}&fromEvaluation=true`);
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Inline Styles - unchanged */}
       <style>{`
         .sidebar {
           background-color: white;
@@ -349,16 +371,6 @@ const EvaluationHistory = () => {
           font-size: 0.8rem;
           white-space: nowrap;
         }
-        .remarks-cell {
-          max-width: 200px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .remarks-cell:hover {
-          white-space: normal;
-          overflow: visible;
-        }
         .view-button {
           background-color: ${coralColor};
           color: white;
@@ -371,6 +383,49 @@ const EvaluationHistory = () => {
         }
         .view-button:hover {
           opacity: 0.9;
+        }
+        .loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px;
+        }
+        .loading-spinner {
+          border: 4px solid #f3f3f3;
+          border-top: 4px solid ${coralColor};
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 2s linear infinite;
+          margin-bottom: 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .error-message {
+          background-color: #ffebee;
+          color: #c62828;
+          padding: 15px;
+          border-radius: 4px;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .retry-button {
+          background-color: #c62828;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          margin-top: 10px;
+          cursor: pointer;
+        }
+        .no-data-message {
+          text-align: center;
+          padding: 40px;
+          color: #757575;
+          font-style: italic;
         }
       `}</style>
     </div>
