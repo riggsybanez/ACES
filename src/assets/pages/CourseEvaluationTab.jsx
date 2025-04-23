@@ -38,7 +38,7 @@ const ADDU_GRADING = {
   'FD': 0
 };
 
-const MIN_PASSING_GRADE = 2.5; // C+ or better
+const MIN_PASSING_GRADE = 1.0; // C+ or better
 
 export default function CourseEvaluationTab() {
   const { currentUser } = useAuth();
@@ -221,6 +221,9 @@ const parseAteneoDavaoTranscript = (lines) => {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
+    // Skip empty lines
+    if (!line) continue;
+    
     // Check if we're entering a semester section
     if (line.includes("Semester") && line.includes("-")) {
       inCourseSection = true;
@@ -235,40 +238,67 @@ const parseAteneoDavaoTranscript = (lines) => {
     
     // Only process lines when we're in a course section
     if (inCourseSection) {
-      // Look for course code pattern at the beginning of the line
-      const codeMatch = line.match(/^([A-Z]{2,4}\s*\d{3,4}[A-Z]?)/);
+      // Try to identify course codes in various formats
+      const codeMatch = line.match(/^(\s*[A-Za-z]{2,5}\s*\d{3,5}[A-Za-z]*)/);
       
       if (codeMatch) {
         const courseCode = codeMatch[1].trim();
         // Remove the course code from the line
         let remaining = line.substring(codeMatch[0].length).trim();
         
-        // For Ateneo format, we need to extract from the end
-        // The last number is typically the credit, and before that is the grade
-        
-        // First, try to extract credit (the last number in the line)
-        let credits = '';
-        const creditMatch = remaining.match(/(\d+(?:\.\d+)?)$/);
-        
-        if (creditMatch) {
-          credits = creditMatch[1];
-          // Remove the credit from the remaining text
-          remaining = remaining.substring(0, remaining.lastIndexOf(creditMatch[0])).trim();
-        }
-        
-        // Now try to extract grade (should be one of A, B+, B, C+, C, D, F, FD, W)
+        // For Ateneo format, let's extract the grade and credits
         let grade = '';
-        const gradeMatch = remaining.match(/(A|B\+|B|C\+|C|D|F|FD|W)$/i);
+        let credits = '0'; // Default to 0 if not found
+        
+        // First, try to extract known valid grades
+        // Look for valid grade pattern (A, B+, B, C+, C, D, F, FD, W) at the end or followed by a number
+        const gradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)\s*(\d+(?:\.\d+)?)?$/i);
         
         if (gradeMatch) {
           grade = gradeMatch[1].toUpperCase();
-          // Remove the grade from the remaining text
+          
+          // If there's a number after the grade, it's the credits
+          if (gradeMatch[2]) {
+            credits = gradeMatch[2].trim();
+          }
+          
+          // Remove the grade and credits from the remaining text
           remaining = remaining.substring(0, remaining.lastIndexOf(gradeMatch[0])).trim();
+        } else {
+          // If no clear grade+credit pattern, look for just a grade at the end
+          const soloGradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)$/i);
+          
+          if (soloGradeMatch) {
+            grade = soloGradeMatch[1].toUpperCase();
+            // Remove the grade from the remaining text
+            remaining = remaining.substring(0, remaining.lastIndexOf(soloGradeMatch[0])).trim();
+          }
+          
+          // Look for a number at the end which would be credits
+          const creditMatch = remaining.match(/\s+(\d+(?:\.\d+)?)$/);
+          
+          if (creditMatch) {
+            credits = creditMatch[1];
+            // Remove the credits from the remaining text
+            remaining = remaining.substring(0, remaining.lastIndexOf(creditMatch[0])).trim();
+          }
         }
         
-        // What's left should be the course description
-        const description = remaining;
+        // Clean up the description - remove any gibberish or non-alphanumeric characters at the end
+        // This helps with cases like "ART APPRECIATION FD rE"
+        let description = remaining.trim();
         
+        // Remove anything that looks like a grade but is followed by gibberish
+        const gibberishMatch = description.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)\s+[^0-9\s]{1,2}$/i);
+        if (gibberishMatch) {
+          // If we find a grade followed by gibberish, capture the grade and remove the gibberish
+          if (!grade) {
+            grade = gibberishMatch[1].toUpperCase();
+          }
+          description = description.substring(0, description.lastIndexOf(gibberishMatch[0])).trim();
+        }
+        
+        // Add the course, even if grade or credits are missing
         courses.push({
           code: courseCode,
           description: description,
@@ -277,11 +307,26 @@ const parseAteneoDavaoTranscript = (lines) => {
           status: 'pending',
           remarks: ''
         });
+        
+        // Debug logging
+        console.log(`Parsed course: ${courseCode} | ${description} | Grade: ${grade} | Credits: ${credits}`);
+      } else {
+        // Check if this might be a continuation of the previous course description
+        // or a course with unusual formatting
+        
+        // For now, log these lines for debugging
+        console.log(`Could not parse course code from line: ${line}`);
       }
     }
   }
   
-  return courses;
+  // Additional validation and cleanup
+  const validCourses = courses.filter(course => {
+    // Keep courses that have at least a code
+    return course.code && course.code.trim() !== '';
+  });
+  
+  return validCourses;
 };
 
 // Parser for University of Mindanao transcripts
@@ -471,23 +516,29 @@ const parseGenericTranscript = (lines) => {
   // Evaluate extracted courses against prospectus
   const evaluateCourses = (courses) => {
     return courses.map(course => {
+      // Determine if course is passed based on grade regardless of prospectus match
+      const isPassed = isCoursePassed(course.grade);
+      
+      // Find matching course in prospectus
       const matchingCourse = findMatchingCourse(course.code, course.description);
       
       if (matchingCourse) {
-        const isPassed = isCoursePassed(course.grade);
         return {
           ...course,
           status: isPassed ? 'passed' : 'failed',
           matchedTo: matchingCourse.code,
           yearId: matchingCourse.yearId,
           semesterId: matchingCourse.semesterId,
-          passed: isPassed
+          passed: isPassed,
+          inProspectus: true
         };
       } else {
         return {
           ...course,
-          status: 'not-evaluated',
-          remarks: 'No matching course found in prospectus'
+          status: isPassed ? 'passed' : 'failed',
+          passed: isPassed,
+          inProspectus: false,
+          remarks: course.remarks || ''
         };
       }
     });
