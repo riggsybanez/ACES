@@ -47,7 +47,9 @@ export default function CourseEvaluationTab() {
   const [file, setFile] = useState(null);
   const [fileUrl, setFileUrl] = useState(null);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [studentName, setStudentName] = useState("");
+  const [studentNameError, setStudentNameError] = useState("");
   const [program, setProgram] = useState("BSCS");
   const [university, setUniversity] = useState("University of Mindanao");
   const [extractedCourses, setExtractedCourses] = useState([]);
@@ -62,8 +64,82 @@ export default function CourseEvaluationTab() {
   const [semesterDropdownOpen, setSemesterDropdownOpen] = useState(false);
   const [rawOcrText, setRawOcrText] = useState("");
   const [yearLevelSelection, setYearLevelSelection] = useState(1);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   
   const workerRef = useRef(null);
+  
+  // Email validation function
+  const isValidEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+  
+  // Handle email change with validation
+  const handleEmailChange = (e) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    
+    if (newEmail && !isValidEmail(newEmail)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  };
+  
+  // Handle name change
+  const handleNameChange = (e) => {
+    const newName = e.target.value;
+    setStudentName(newName);
+    
+    if (newName.trim() === "") {
+      setStudentNameError("Student name is required");
+    } else {
+      setStudentNameError("");
+    }
+  };
+  
+
+// Check if email or student name already exists in the database
+const checkForDuplicates = async () => {
+  if (!email || !studentName || emailError) return false;
+  
+  setIsCheckingDuplicates(true);
+  try {
+    // Check for email duplicates
+    const emailQuery = query(
+      collection(db, "Students"),
+      where("Email", "==", email)
+    );
+    const emailSnapshot = await getDocs(emailQuery);
+    
+    if (!emailSnapshot.empty) {
+      // Don't proceed if email exists
+      alert(`A student with email "${email}" already exists in the database.`);
+      return false;
+    }
+    
+    // Check for name duplicates
+    const nameQuery = query(
+      collection(db, "Students"),
+      where("Name", "==", studentName)
+    );
+    const nameSnapshot = await getDocs(nameQuery);
+    
+    if (!nameSnapshot.empty) {
+      // Don't proceed if name exists
+      alert(`A student named "${studentName}" already exists in the database.`);
+      return false;
+    }
+    
+    return true; // No duplicates found
+  } catch (error) {
+    console.error("Error checking for duplicates:", error);
+    alert("Error checking for duplicates. Please try again.");
+    return false;
+  } finally {
+    setIsCheckingDuplicates(false);
+  }
+};
   
   // Initialize Tesseract worker
   useEffect(() => {
@@ -248,35 +324,48 @@ const parseAteneoDavaoTranscript = (lines) => {
         
         // For Ateneo format, let's extract the grade and credits
         let grade = '';
-        let credits = '0'; // Default to 0 if not found
+        let credits = ''; // Default to empty string
         
-        // First, try to extract known valid grades
-        // Look for valid grade pattern (A, B+, B, C+, C, D, F, FD, W) at the end or followed by a number
-        const gradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)\s*(\d+(?:\.\d+)?)?$/i);
+        // Special case for "FD w" or "FD rE" patterns at the end
+        const fdWithLetterMatch = remaining.match(/\s+FD\s+([a-zA-Z]{1,2})$/);
+        if (fdWithLetterMatch) {
+          grade = 'FD';
+          // Remove the pattern from the remaining text
+          remaining = remaining.substring(0, remaining.lastIndexOf(fdWithLetterMatch[0])).trim();
+          console.log(`Found FD with letter pattern. Grade set to FD. Remaining: ${remaining}`);
+        }
         
-        if (gradeMatch) {
-          grade = gradeMatch[1].toUpperCase();
+        // First, try to extract known valid grades if not already found
+        if (!grade) {
+          // Look for valid grade pattern (A, B+, B, C+, C, D, F, FD, W) at the end or followed by a number
+          const gradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)\s*(\d+(?:\.\d+)?)?$/i);
           
-          // If there's a number after the grade, it's the credits
-          if (gradeMatch[2]) {
-            credits = gradeMatch[2].trim();
+          if (gradeMatch) {
+            grade = gradeMatch[1].toUpperCase();
+            
+            // If there's a number after the grade, it's the credits
+            if (gradeMatch[2]) {
+              credits = gradeMatch[2].trim();
+            }
+
+            // Remove the grade and credits from the remaining text
+            remaining = remaining.substring(0, remaining.lastIndexOf(gradeMatch[0])).trim();
+          } else {
+            // If no clear grade+credit pattern, look for just a grade at the end
+            const soloGradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)$/i);
+
+            if (soloGradeMatch) {
+              grade = soloGradeMatch[1].toUpperCase();
+              // Remove the grade from the remaining text
+              remaining = remaining.substring(0, remaining.lastIndexOf(soloGradeMatch[0])).trim();
+            }
           }
-          
-          // Remove the grade and credits from the remaining text
-          remaining = remaining.substring(0, remaining.lastIndexOf(gradeMatch[0])).trim();
-        } else {
-          // If no clear grade+credit pattern, look for just a grade at the end
-          const soloGradeMatch = remaining.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)$/i);
-          
-          if (soloGradeMatch) {
-            grade = soloGradeMatch[1].toUpperCase();
-            // Remove the grade from the remaining text
-            remaining = remaining.substring(0, remaining.lastIndexOf(soloGradeMatch[0])).trim();
-          }
-          
-          // Look for a number at the end which would be credits
+        }
+        
+        // Look for a number at the end which would be credits
+        if (credits === '') {
           const creditMatch = remaining.match(/\s+(\d+(?:\.\d+)?)$/);
-          
+
           if (creditMatch) {
             credits = creditMatch[1];
             // Remove the credits from the remaining text
@@ -284,29 +373,26 @@ const parseAteneoDavaoTranscript = (lines) => {
           }
         }
         
-        // Clean up the description - remove any gibberish or non-alphanumeric characters at the end
-        // This helps with cases like "ART APPRECIATION FD rE"
+        // Clean up the description
         let description = remaining.trim();
         
-        // Remove anything that looks like a grade but is followed by gibberish
-        const gibberishMatch = description.match(/\s+(A|B\+|B|C\+|C|D|F|FD|W)\s+[^0-9\s]{1,2}$/i);
-        if (gibberishMatch) {
-          // If we find a grade followed by gibberish, capture the grade and remove the gibberish
-          if (!grade) {
-            grade = gibberishMatch[1].toUpperCase();
-          }
-          description = description.substring(0, description.lastIndexOf(gibberishMatch[0])).trim();
-        }
-        
-        // Add the course, even if grade or credits are missing
-        courses.push({
+        // Add the course
+        const newCourse = {
           code: courseCode,
           description: description,
-          credits: credits === '' ? 0 : parseFloat(credits) || 0,
+          credits: (credits === '' || credits === '-') ? '' : parseFloat(credits) || 0,
           grade: grade,
           status: 'pending',
           remarks: ''
-        });
+        };
+        
+        // If both grade and credits are blank, mark as "not credited"
+        if (grade === '' && (credits === '' || credits === 0)) {
+          newCourse.status = 'not-credited';
+          newCourse.remarks = 'No credits found';
+        }
+        
+        courses.push(newCourse);
         
         // Debug logging
         console.log(`Parsed course: ${courseCode} | ${description} | Grade: ${grade} | Credits: ${credits}`);
@@ -516,7 +602,16 @@ const parseGenericTranscript = (lines) => {
   // Evaluate extracted courses against prospectus
   const evaluateCourses = (courses) => {
     return courses.map(course => {
-      // Determine if course is passed based on grade regardless of prospectus match
+      // If the course is already marked as not-credited, preserve that status
+      if (course.status === 'not-credited') {
+        return {
+          ...course,
+          passed: false,
+          inProspectus: false
+        };
+      }
+      
+      // Otherwise, determine if course is passed based on grade
       const isPassed = isCoursePassed(course.grade);
       
       // Find matching course in prospectus
@@ -545,10 +640,30 @@ const parseGenericTranscript = (lines) => {
   };
 
   const handleExtract = async () => {
-    if (!file || !email || !studentName || !program) {
-      alert("Please fill out all fields and upload a file before extracting.");
+    // Validate inputs
+    if (!file) {
+      alert("Please upload a transcript file.");
       return;
     }
+    
+    if (!studentName.trim()) {
+      setStudentNameError("Student name is required");
+      return;
+    }
+    
+    if (!email) {
+      setEmailError("Email is required");
+      return;
+    }
+    
+    if (!isValidEmail(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    
+    // Check for duplicates before proceeding
+    const canProceed = await checkForDuplicates();
+    if (!canProceed) return;
     
     try {
       setIsProcessing(true);
@@ -619,6 +734,11 @@ const parseGenericTranscript = (lines) => {
       return;
     }
     
+    if (!isValidEmail(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    
     try {
       setIsProcessing(true);
       
@@ -667,6 +787,15 @@ const parseGenericTranscript = (lines) => {
       } else {
         // Use existing student
         studentId = studentSnapshot.docs[0].id;
+        
+        // Update student info
+        const studentDoc = doc(db, "Students", studentId);
+        await setDoc(studentDoc, {
+          Name: studentName,
+          Course: program,
+          YearLevel: yearLevelSelection,
+          UpdatedAt: serverTimestamp()
+        }, { merge: true });
       }
       
       // 3. Copy program structure to student and mark passed courses
@@ -789,7 +918,9 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
     setFile(null);
     setFileUrl(null);
     setEmail("");
+    setEmailError("");
     setStudentName("");
+    setStudentNameError("");
     setProgram("BSCS");
     setUniversity("University of Mindanao");
     setExtractedCourses([]);
@@ -918,11 +1049,12 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                     type="email" 
                     id="email" 
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={handleEmailChange}
                     placeholder="student@example.com" 
-                    className="filter-input"
+                    className={`filter-input ${emailError ? 'input-error' : ''}`}
                     aria-label="Student email"
                   />
+                  {emailError && <span className="error-message">{emailError}</span>}
                 </div>
                 
                 <div className="filter-group">
@@ -931,11 +1063,12 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                     type="text" 
                     id="studentName"
                     value={studentName} 
-                    onChange={(e) => setStudentName(e.target.value)} 
+                    onChange={handleNameChange} 
                     placeholder="John Doe"
-                    className="filter-input"
+                    className={`filter-input ${studentNameError ? 'input-error' : ''}`}
                     aria-label="Student name"
                   />
+                  {studentNameError && <span className="error-message">{studentNameError}</span>}
                 </div>
               </div>
               
@@ -973,14 +1106,15 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
               </div>
               
               <div className="action-buttons">
-
                 <button 
                   onClick={handleExtract} 
                   className="action-button save"
-                  disabled={isProcessing || !file}
+                  disabled={isProcessing || !file || isCheckingDuplicates || !!emailError || !!studentNameError}
                   aria-label="Extract information from transcript"
                 >
-                  {isProcessing ? "Processing..." : "Extract Information"}
+                  {isProcessing ? "Processing..." : 
+                   isCheckingDuplicates ? "Checking..." : 
+                   "Extract Information"}
                 </button>
               </div>
             </div>
@@ -1023,7 +1157,11 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                   </thead>
                   <tbody>
                     {evaluatedCourses.map((course, idx) => (
-                      <tr key={idx} className={course.status === 'passed' ? 'passed-row' : course.status === 'failed' ? 'failed-row' : ''}>
+                      <tr key={idx} className={
+                        course.status === 'passed' ? 'passed-row' : 
+                        course.status === 'failed' ? 'failed-row' : 
+                        course.status === 'not-credited' ? 'not-credited-row' : ''
+                      }>
                         <td>{course.code}</td>
                         <td>{course.description}</td>
                         <td style={{ textAlign: 'center' }}>{course.credits}</td>
@@ -1032,7 +1170,8 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                           <span className={`status-badge ${course.status}`}>
                             {course.status === 'passed' ? 'Passed' : 
                              course.status === 'failed' ? 'Failed' : 
-                             'Not Evaluated'}
+                             course.status === 'not-credited' ? 'Not Credited' :
+                            'Not Evaluated'}
                           </span>
                         </td>
                         <td>
@@ -1117,7 +1256,7 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                 >
                   Back
                 </button>
-                  <button 
+                <button 
                   onClick={clearEvaluation}
                   className="action-button reset"
                   disabled={isProcessing}
@@ -1128,12 +1267,11 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
                 <button 
                   onClick={saveEvaluation}
                   className="action-button save"
-                  disabled={isProcessing}
+                  disabled={isProcessing || !!emailError}
                   aria-label="Save evaluation"
                 >
                   {isProcessing ? "Saving..." : "Save Evaluation"}
                 </button>
-
               </div>
             </div>
           )}
@@ -1368,6 +1506,15 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
           outline: none;
           border-color: ${coralColor};
         }
+        .input-error {
+          border-color: #dc3545 !important;
+          background-color: rgba(220, 53, 69, 0.05);
+        }
+        .error-message {
+          color: #dc3545;
+          font-size: 0.8rem;
+          margin-top: 5px;
+        }
         .view-mode-button {
           padding: 8px 12px;
           border: 1px solid #ddd;
@@ -1600,7 +1747,7 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
           background-color: rgba(244, 67, 54, 0.2);
           color: #c62828;
         }
-        .status-badge.not-evaluated {
+        .status-badge.not-credited {
           background-color: rgba(255, 152, 0, 0.2);
           color: #ef6c00;
         }
@@ -1614,6 +1761,9 @@ const copyProgramToStudent = async (courseCode, studentId, evaluatedCourses) => 
         }
         .matched-course {
           background-color: rgba(76, 175, 80, 0.1);
+        }
+        .not-credited-row {
+          background-color: rgba(255, 152, 0, 0.05);
         }
         
         /* Checkbox styling */

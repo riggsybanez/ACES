@@ -408,9 +408,11 @@ const handlePassedChange = async (index, passed) => {
   
   // Filter students based on search and filters
   const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          student.id.toString().includes(searchTerm);
+    const matchesSearch = 
+      (student.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (student.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      ((student.id !== undefined && student.id !== null) ? 
+        student.id.toString().includes(searchTerm) : false);
     const matchesCourse = courseFilter ? student.course === courseFilter : true;
     const matchesYear = yearFilter ? student.yearLevel === parseInt(yearFilter) : true;
     
