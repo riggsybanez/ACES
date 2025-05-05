@@ -223,8 +223,16 @@ const viewStudentProspectus = async (student) => {
   
   // Function to add a new student
   const handleAddStudent = async () => {
+    // Check if all fields are filled
     if (!newStudent.id || !newStudent.name || !newStudent.email || !newStudent.course || !newStudent.yearLevel) {
       alert('Please fill in all fields');
+      return;
+    }
+    
+    // Email format validation using regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStudent.email.trim())) {
+      alert('Please enter a valid email address');
       return;
     }
     
@@ -241,21 +249,33 @@ const viewStudentProspectus = async (student) => {
       };
       
       // Check if student ID already exists
-      const studentQuery = query(
+      const idQuery = query(
         collection(db, 'Students'),
         where('ID', '==', parseInt(newStudent.id))
       );
-      const existingStudents = await getDocs(studentQuery);
+      const existingIDs = await getDocs(idQuery);
       
-      if (!existingStudents.empty) {
+      if (!existingIDs.empty) {
         alert('A student with this ID already exists');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if email already exists
+      const emailQuery = query(
+        collection(db, 'Students'),
+        where('Email', '==', newStudent.email.trim())
+      );
+      const existingEmails = await getDocs(emailQuery);
+      
+      if (!existingEmails.empty) {
+        alert('A student with this email already exists');
         setLoading(false);
         return;
       }
       
       // Add the student to Firestore
       const studentDocRef = await addDoc(collection(db, 'Students'), studentData);
-
       
       // After:
       await copyProgramToStudent(studentData.Course, studentDocRef.id);
@@ -265,7 +285,6 @@ const viewStudentProspectus = async (student) => {
         ...studentData,
         id: studentData.ID
       };
-      
       
       setStudents([...students, newStudentWithId]);
       setNewStudent({ id: '', name: '', email: '', course: '', yearLevel: '' });
