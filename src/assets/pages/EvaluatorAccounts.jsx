@@ -14,6 +14,7 @@ const EvaluatorAccounts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
+  const [showPasswords, setShowPasswords] = useState(false);
 
   // Fetch evaluator accounts from Firestore
   useEffect(() => {
@@ -73,6 +74,16 @@ const EvaluatorAccounts = () => {
     setSortOrder(sortOrder === "asc" ? "desc" : "asc");
   };
 
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPasswords(!showPasswords);
+  };
+
+  // Function to display password (either masked or plaintext)
+  const displayPassword = (password) => {
+    return showPasswords ? password : '••••••••';
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Navigation Sidebar */}
@@ -105,12 +116,18 @@ const EvaluatorAccounts = () => {
         ) : (
           <div className="filter-container">
             <div className="filter-row">
-              <div className="action-buttons" style={{ marginTop: 0, justifyContent: 'flex-start' }}>
+              <div className="action-buttons" style={{ marginTop: 0, justifyContent: 'space-between', width: '100%' }}>
                 <button 
                   onClick={sortAccounts} 
                   className="action-button save"
                 >
                   Sort {sortOrder === "asc" ? "🔼" : "🔽"}
+                </button>
+                <button 
+                  onClick={togglePasswordVisibility} 
+                  className={`action-button ${showPasswords ? "reset" : "save"}`}
+                >
+                  {showPasswords ? "Hide Passwords" : "Show Passwords"}
                 </button>
               </div>
             </div>
@@ -135,7 +152,7 @@ const EvaluatorAccounts = () => {
                         <tr key={account.docId}>
                           <td>{account.id}</td>
                           <td>{account.name}</td>
-                          <td>{account.password}</td>
+                          <td>{displayPassword(account.password)}</td>
                           <td style={{ color: "green" }}>Active</td>
                           <td>
                             <button 
@@ -178,7 +195,7 @@ const EvaluatorAccounts = () => {
                         <tr key={account.docId}>
                           <td>{account.id}</td>
                           <td>{account.name}</td>
-                          <td>{account.password}</td>
+                          <td>{displayPassword(account.password)}</td>
                           <td style={{ color: "red" }}>Inactive</td>
                           <td>
                             <button 
