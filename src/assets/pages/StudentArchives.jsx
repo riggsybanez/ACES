@@ -229,6 +229,13 @@ const viewStudentProspectus = async (student) => {
       return;
     }
     
+    // Validate ID is an integer
+    const idValue = newStudent.id.trim();
+    if (!/^\d+$/.test(idValue)) {
+      alert('Student ID must contain only numbers');
+      return;
+    }
+    
     // Email format validation using regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newStudent.email.trim())) {
