@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
 import LogoutButton from '../../components/LogoutButton';
 import { db } from '../../firebase/authService';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 const coralColor = 'rgba(255,79,78,255)';
 
@@ -33,15 +33,29 @@ const AdminDashboard = () => {
     }
 
     // Validate ID is a number
-    const idNumber = parseInt(id);
-    if (isNaN(idNumber)) {
-      setNotification({ type: "error", content: "ID must be a number" });
+    if (!/^\d+$/.test(id.trim())) {
+      setNotification({ type: "error", content: "ID must contain only numbers" });
       return;
     }
 
+    const idNumber = parseInt(id);
+    
     setLoading(true);
     
     try {
+      // Check if ID already exists in the Evaluator collection
+      const evaluatorQuery = query(
+        collection(db, 'Evaluator'),
+        where('ID', '==', idNumber)
+      );
+      const evaluatorQuerySnapshot = await getDocs(evaluatorQuery);
+      
+      if (!evaluatorQuerySnapshot.empty) {
+        setNotification({ type: "error", content: "This ID already exists in the system" });
+        setLoading(false);
+        return;
+      }
+      
       // Add new evaluator to Firestore
       const evaluatorData = {
         ID: idNumber,
