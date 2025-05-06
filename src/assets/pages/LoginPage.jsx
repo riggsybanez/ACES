@@ -15,6 +15,13 @@ const LoginPage = () => {
     setLoading(true);
     setError('');
 
+    // Check if both fields are empty
+    if (!username.trim() && !password.trim()) {
+      setError('Please fill in both the ID and password to log in.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const result = await login(username, password);
       
